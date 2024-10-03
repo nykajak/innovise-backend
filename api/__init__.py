@@ -8,7 +8,7 @@ app.config["DEBUG"] = True
 app.config["MONGO_URI"] = os.getenv("CONN_STR")
 
 with app.app_context():
-    db = PyMongo(current_app).cx["sample_mflix"]
+    db = PyMongo(current_app).cx["innovise"]
 
 CORS(app)
 
