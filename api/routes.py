@@ -8,6 +8,12 @@ def test():
     obj = db.users.find_one({"name":"Dummy"})
     return jsonify({"name":obj["name"]})
 
+@app.route("/users",methods=["GET"])
+def all_users():
+    users = db.users.find()
+    return jsonify({"payload":[str(u["_id"]) for u in users]})
+
+
 @app.route("/user/<id>",methods=["GET"])
 def get_user(id):
     obj = db.users.find_one({"_id":ObjectId(id)})
