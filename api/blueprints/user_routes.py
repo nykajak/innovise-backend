@@ -45,6 +45,16 @@ def get_user(id):
     obj = {x:str(y) for x,y in obj.items()}
     return jsonify({"payload":obj})
 
+@user_routes.delete("/<id>")
+def delete_user(id):
+    """
+        DELETE /users/<id> 
+        Deletes a user with given id.
+    """
+
+    db.users.delete_one({"_id":ObjectId(id)})
+    return {},200
+
 @user_routes.post("/login")
 def login():
     """
