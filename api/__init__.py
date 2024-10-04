@@ -11,9 +11,6 @@ app.config["SECRET_KEY"] = "verysecretkey" # To be changed
 
 with app.app_context():
     db = PyMongo(current_app).cx["innovise"]
-    # db["users"].create_index("name",unique=True)
-    # db["users"].create_index("email",unique=True)
-
     jwt = JWTManager(current_app)
 
 CORS(app)

@@ -3,6 +3,7 @@
 from api import app,db,jwt
 from flask import Blueprint,jsonify,redirect,request,url_for
 from flask_pymongo import ObjectId
+from pymongo.errors import DuplicateKeyError
 from flask_jwt_extended import create_access_token,get_jwt_identity,jwt_required
 
 user_routes = Blueprint("user_routes", __name__)
@@ -23,17 +24,25 @@ def add_user():
         Add (email,name,password in request body)
         Adds a user with given data. 
     """
-    email = request.form.get("email")
-    name = request.form.get("name")
-    password = request.form.get("password")
+    email = request.form.get("email",None)
+    name = request.form.get("name",None)
+    password = request.form.get("password",None)
 
-    id = db.users.insert_one({
-        "name":name,
-        "email":email,
-        "password":password
-    }).inserted_id
+    if email and name and password:
+        try:
+            id = db.users.insert_one({
+                "name":name,
+                "email":email,
+                "password":password
+            }).inserted_id
 
-    return redirect(url_for("user_routes.get_user",id=id))
+            return redirect(url_for("user_routes.get_user",id=id))
+
+        except DuplicateKeyError as e:
+            field = list(e._OperationFailure__details["keyValue"].keys())[0]
+            return jsonify({"msg":"Duplicate user!", "field":field})
+    
+    return jsonify({"msg":"Malformed Request"})
 
 @user_routes.get("/<id>")
 def get_user(id):
