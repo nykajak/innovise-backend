@@ -152,7 +152,7 @@ def add_interest():
             return jsonify({"payload":res}),200
 
         except DuplicateKeyError as e:
-            return jsonify({"msg":"Interest already added!"}),400
+            return jsonify({"msg":"Interest already added!"}),200
     
     else:
         return jsonify({"msg":"Interest not found!"}),404
