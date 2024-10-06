@@ -149,6 +149,35 @@ def see_interests(id):
     
     else:
         return jsonify({"msg":"No such user found"}),404
+
+@user_routes.post("/following")
+@jwt_required()
+def add_following():
+    """
+        POST /users/following
+        Add interest to user
+    """
+
+    current_user = get_jwt_identity()
+    current_user = db.users.find_one({"name":current_user})
+
+    other_user = request.form.get("name")
+    other_user = db.users.find_one({"name":other_user})
+
+    if other_user:
+        follower_id = str(current_user["_id"])
+        followed_id = str(other_user["_id"])
+
+        try:
+            followed_obj_id = db.followers.insert_one({"follower_id":follower_id, "followed_id": followed_id}).inserted_id
+            res = {x:str(y) for x,y in db.followers.find_one({"_id":followed_obj_id}).items()}
+            return jsonify({"payload":res}),200
+
+        except DuplicateKeyError as e:
+            return jsonify({"msg":"Follower already added!"}),400
+    
+    else:
+        return jsonify({"msg":"User not found!"}),404
     
 @user_routes.get("<id>/followers")
 def see_followers(id):
