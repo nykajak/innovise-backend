@@ -15,7 +15,7 @@ def all_users():
         View all users. 
     """
     users = db.users.find()
-    return jsonify({"payload":[str(u["_id"]) for u in users]})
+    return jsonify({"payload":[str(u["_id"]) for u in users]}),200
 
 @user_routes.post("/")
 def add_user():
@@ -40,9 +40,9 @@ def add_user():
 
         except DuplicateKeyError as e:
             field = list(e._OperationFailure__details["keyValue"].keys())[0]
-            return jsonify({"msg":"Duplicate user!", "field":field})
+            return jsonify({"msg":"Duplicate user!", "field":field}), 400
     
-    return jsonify({"msg":"Malformed Request"})
+    return jsonify({"msg":"Malformed Request!"}), 400
 
 @user_routes.get("/<id>")
 def get_user(id):
@@ -51,8 +51,11 @@ def get_user(id):
         Finds a user with given id. 
     """
     obj = db.users.find_one({"_id":ObjectId(id)})
-    obj = {x:str(y) for x,y in obj.items()}
-    return jsonify({"payload":obj})
+    if obj:
+        obj = {x:str(y) for x,y in obj.items()}
+        return jsonify({"payload":obj}),200
+    else:
+        return jsonify({"msg":"User not found!"}), 404
 
 @user_routes.delete("/<id>")
 def delete_user(id):
@@ -61,8 +64,12 @@ def delete_user(id):
         Deletes a user with given id.
     """
 
-    db.users.delete_one({"_id":ObjectId(id)})
-    return {},200
+    res = db.users.find_one_and_delete({"_id":ObjectId(id)})
+    if res:
+        res = {x:str(y) for x,y in res.items()}
+        return {"payload":res},200
+    
+    return jsonify({"msg":"User not found!"}), 404
 
 @user_routes.post("/login")
 def login():
@@ -76,9 +83,9 @@ def login():
     user = db.users.find_one({"name":username})
     if user and user["password"] == password:
         access_token = create_access_token(identity=username)
-        return jsonify(access_token=access_token)
+        return jsonify(access_token=access_token),200
     
-    return jsonify({"msg": "Bad username or password"}), 401
+    return jsonify({"msg": "Incorrect username or password"}), 401
 
 @user_routes.get("/current")
 @jwt_required()
