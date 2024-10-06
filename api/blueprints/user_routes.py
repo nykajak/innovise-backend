@@ -8,6 +8,21 @@ from flask_jwt_extended import create_access_token,get_jwt_identity,jwt_required
 
 user_routes = Blueprint("user_routes", __name__)
 
+
+@user_routes.get("/name/<name>")
+def get_id(name):
+    """
+        GET /users/name/<name>
+        Returns id of user with name
+    """
+
+    obj = db.users.find_one({"name":name})
+    if obj:
+        obj = {x:str(y) for x,y in obj.items() if x in ["name","fullname", "bio", "_id"]}
+        return jsonify({"payload":obj}),200
+    else:
+        return jsonify({"msg":"User not found!"}), 404
+
 @user_routes.get("/")
 def all_users():
     """
