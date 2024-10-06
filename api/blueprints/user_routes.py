@@ -120,6 +120,28 @@ def see_interests(id):
     
     else:
         return jsonify({"msg":"No such user found"}),404
+    
+@user_routes.get("<id>/followers")
+def see_followers(id):
+    """
+        GET /users/<id>/followers
+        Returns list of followers
+    """
+
+    user = db.users.find_one({"_id":ObjectId(id)})
+    if user:
+        followers = db.followers.find({"followed_id":str(user["_id"])})
+        follower_names = []
+
+        for i in followers:
+            res = db.users.find_one({"_id":ObjectId(i["follower_id"])})
+            if res:
+                follower_names.append(res["name"])
+
+        return jsonify({"payload":follower_names}),200
+    
+    else:
+        return jsonify({"msg":"No such user found"}),404
 
 
 app.register_blueprint(user_routes,url_prefix="/users")
