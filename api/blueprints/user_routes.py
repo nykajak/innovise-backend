@@ -193,14 +193,15 @@ def add_following():
     else:
         return jsonify({"msg":"User not found!"}),404
     
-@user_routes.get("<id>/followers")
-def see_followers(id):
+@user_routes.get("/followers")
+@jwt_required()
+def see_followers():
     """
         GET /users/<id>/followers
         Returns list of followers
     """
-
-    user = db.users.find_one({"_id":ObjectId(id)})
+    current_user = get_jwt_identity()
+    user = db.users.find_one({"name":current_user})
     if user:
         followers = db.followers.find({"followed_id":str(user["_id"])})
         follower_names = []
