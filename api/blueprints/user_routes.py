@@ -99,4 +99,27 @@ def see_current():
     return jsonify(logged_in_as=current_user), 200
 
 
+@user_routes.get("<id>/interests")
+def see_interests(id):
+    """
+        GET /users/<id>/interests
+        Returns list of interests
+    """
+
+    user = db.users.find_one({"_id":ObjectId(id)})
+    if user:
+        interests = db.interests.find({"user_id":str(user["_id"])})
+        interest_names = []
+
+        for i in interests:
+            res = db.tags.find_one({"_id":ObjectId(i["tag_id"])})
+            if res:
+                interest_names.append(res["name"])
+
+        return jsonify({"payload":interest_names}),200
+    
+    else:
+        return jsonify({"msg":"No such user found"}),404
+
+
 app.register_blueprint(user_routes,url_prefix="/users")
