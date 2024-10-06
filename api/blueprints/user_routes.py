@@ -99,6 +99,35 @@ def see_current():
     return jsonify(logged_in_as=current_user), 200
 
 
+@user_routes.post("/interests")
+@jwt_required()
+def add_interest():
+    """
+        POST /users/interests
+        Add interest to user
+    """
+
+    current_user = get_jwt_identity()
+    current_user = db.users.find_one({"name":current_user})
+
+    interest = request.form.get("interest")
+    interest = db.tags.find_one({"name":interest})
+
+    if interest:
+        user_id = str(current_user["_id"])
+        tag_id = str(interest["_id"])
+
+        try:
+            interest_id = db.interests.insert_one({"user_id":user_id, "tag_id": tag_id}).inserted_id
+            res = {x:str(y) for x,y in db.interests.find_one({"_id":interest_id}).items()}
+            return jsonify({"payload":res}),200
+
+        except DuplicateKeyError as e:
+            return jsonify({"msg":"Interest already added!"}),400
+    
+    else:
+        return jsonify({"msg":"Interest not found!"}),404
+
 @user_routes.get("<id>/interests")
 def see_interests(id):
     """
