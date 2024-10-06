@@ -27,14 +27,28 @@ def add_user():
     email = request.form.get("email",None)
     name = request.form.get("name",None)
     password = request.form.get("password",None)
+    fullname = request.form.get("fullname",name)
+    bio = request.form.get("bio",None)
 
     if email and name and password:
         try:
-            id = db.users.insert_one({
-                "name":name,
-                "email":email,
-                "password":password
-            }).inserted_id
+            if bio:
+                id = db.users.insert_one({
+                    "name":name,
+                    "email":email,
+                    "password":password,
+                    "fullname":fullname,
+                    "bio":bio
+                }).inserted_id
+
+            else:
+                id = db.users.insert_one({
+                    "name":name,
+                    "email":email,
+                    "password":password,
+                    "fullname":fullname,
+                    "bio":"None"
+                }).inserted_id
 
             return redirect(url_for("user_routes.get_user",id=id))
 
@@ -52,7 +66,7 @@ def get_user(id):
     """
     obj = db.users.find_one({"_id":ObjectId(id)})
     if obj:
-        obj = {x:str(y) for x,y in obj.items()}
+        obj = {x:str(y) for x,y in obj.items() if x in ["name","fullname", "bio", "_id"]}
         return jsonify({"payload":obj}),200
     else:
         return jsonify({"msg":"User not found!"}), 404
@@ -66,7 +80,7 @@ def delete_user(id):
 
     res = db.users.find_one_and_delete({"_id":ObjectId(id)})
     if res:
-        res = {x:str(y) for x,y in res.items()}
+        res = {x:str(y) for x,y in res.items() if x in ["name","fullname", "bio", "_id"]}
         return {"payload":res},200
     
     return jsonify({"msg":"User not found!"}), 404
