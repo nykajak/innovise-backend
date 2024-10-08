@@ -11,29 +11,36 @@ from api.blueprints.user_routes import user_routes
 def add_interest():
     """
         POST /users/interests
+        Body:
+            num: Integer number of entries
+            interest[1]: First Interest
+            interest[2]: Second interest
+            ....
         Add interest to user
     """
 
     current_user = get_jwt_identity()
     current_user = db.users.find_one({"name":current_user})
 
-    interest = request.form.get("interest")
-    interest = db.tags.find_one({"name":interest})
+    n = int(request.form.get("num"))
+    num_success = 0
+    for i in range(1,n+1):
+        interest = request.form.get(f"interest[{i}]")
+        interest = db.tags.find_one({"name":interest})
 
-    if interest:
-        user_id = str(current_user["_id"])
-        tag_id = str(interest["_id"])
+        if interest:
+            user_id = str(current_user["_id"])
+            tag_id = str(interest["_id"])
 
-        try:
-            interest_id = db.interests.insert_one({"user_id":user_id, "tag_id": tag_id}).inserted_id
-            res = {x:str(y) for x,y in db.interests.find_one({"_id":interest_id}).items()}
-            return jsonify({"payload":res}),200
+            try:
+                interest_id = db.interests.insert_one({"user_id":user_id, "tag_id": tag_id}).inserted_id
+                res = {x:str(y) for x,y in db.interests.find_one({"_id":interest_id}).items()}
+                num_success += 1
 
-        except DuplicateKeyError as e:
-            return jsonify({"msg":"Interest already added!"}),200
+            except DuplicateKeyError as e:
+                pass
     
-    else:
-        return jsonify({"msg":"Interest not found!"}),404
+    return jsonify(payload=num_success),200
 
 @user_routes.get("<id>/interests")
 def see_interests(id):
