@@ -112,7 +112,7 @@ def login():
 
     user = db.users.find_one({"name":username})
     if user and user["password"] == password:
-        access_token = create_access_token(identity=username)
+        access_token = create_access_token(identity=username,expires_delta=timedelta(hours=1))
         return jsonify(access_token=access_token),200
     
     return jsonify({"msg": "Incorrect username or password"}), 401
@@ -125,7 +125,7 @@ def see_current():
         Add Bearer Token: JWT token
         See current user. 
     """
-    current_user = get_jwt_identity(expires_delta=timedelta(hours=1))
+    current_user = get_jwt_identity()
     return jsonify(logged_in_as=current_user), 200
 
 
