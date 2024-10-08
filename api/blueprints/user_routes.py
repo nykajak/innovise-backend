@@ -9,7 +9,6 @@ from datetime import timedelta
 
 user_routes = Blueprint("user_routes", __name__)
 
-
 @user_routes.get("/name/<name>")
 def get_id(name):
     """
@@ -129,108 +128,6 @@ def see_current():
     return jsonify(logged_in_as=current_user), 200
 
 
-@user_routes.post("/interests")
-@jwt_required()
-def add_interest():
-    """
-        POST /users/interests
-        Add interest to user
-    """
-
-    current_user = get_jwt_identity()
-    current_user = db.users.find_one({"name":current_user})
-
-    interest = request.form.get("interest")
-    interest = db.tags.find_one({"name":interest})
-
-    if interest:
-        user_id = str(current_user["_id"])
-        tag_id = str(interest["_id"])
-
-        try:
-            interest_id = db.interests.insert_one({"user_id":user_id, "tag_id": tag_id}).inserted_id
-            res = {x:str(y) for x,y in db.interests.find_one({"_id":interest_id}).items()}
-            return jsonify({"payload":res}),200
-
-        except DuplicateKeyError as e:
-            return jsonify({"msg":"Interest already added!"}),200
-    
-    else:
-        return jsonify({"msg":"Interest not found!"}),404
-
-@user_routes.get("<id>/interests")
-def see_interests(id):
-    """
-        GET /users/<id>/interests
-        Returns list of interests
-    """
-
-    user = db.users.find_one({"_id":ObjectId(id)})
-    if user:
-        interests = db.interests.find({"user_id":str(user["_id"])})
-        interest_names = []
-
-        for i in interests:
-            res = db.tags.find_one({"_id":ObjectId(i["tag_id"])})
-            if res:
-                interest_names.append(res["name"])
-
-        return jsonify({"payload":interest_names}),200
-    
-    else:
-        return jsonify({"msg":"No such user found"}),404
-
-@user_routes.post("/following")
-@jwt_required()
-def add_following():
-    """
-        POST /users/following
-        Add interest to user
-    """
-
-    current_user = get_jwt_identity()
-    current_user = db.users.find_one({"name":current_user})
-
-    other_user = request.form.get("name")
-    other_user = db.users.find_one({"name":other_user})
-
-    if other_user:
-        follower_id = str(current_user["_id"])
-        followed_id = str(other_user["_id"])
-
-        try:
-            followed_obj_id = db.followers.insert_one({"follower_id":follower_id, "followed_id": followed_id}).inserted_id
-            res = {x:str(y) for x,y in db.followers.find_one({"_id":followed_obj_id}).items()}
-            return jsonify({"payload":res}),200
-
-        except DuplicateKeyError as e:
-            return jsonify({"msg":"Follower already added!"}),400
-    
-    else:
-        return jsonify({"msg":"User not found!"}),404
-    
-@user_routes.get("/followers")
-@jwt_required()
-def see_followers():
-    """
-        GET /users/<id>/followers
-        Returns list of followers
-    """
-    current_user = get_jwt_identity()
-    user = db.users.find_one({"name":current_user})
-    if user:
-        followers = db.followers.find({"followed_id":str(user["_id"])})
-        follower_names = []
-
-        for i in followers:
-            res = db.users.find_one({"_id":ObjectId(i["follower_id"])})
-            if res:
-                follower_names.append(res["name"])
-
-        return jsonify({"payload":follower_names}),200
-    
-    else:
-        return jsonify({"msg":"No such user found"}),404
-
-
+import api.blueprints.interest_routes 
+import api.blueprints.follower_routes
 app.register_blueprint(user_routes,url_prefix="/users")
