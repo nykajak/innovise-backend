@@ -5,6 +5,7 @@ from flask import Blueprint,jsonify,redirect,request,url_for
 from flask_pymongo import ObjectId
 from pymongo.errors import DuplicateKeyError
 from flask_jwt_extended import create_access_token,get_jwt_identity,jwt_required
+from datetime import timedelta 
 
 user_routes = Blueprint("user_routes", __name__)
 
@@ -124,7 +125,7 @@ def see_current():
         Add Bearer Token: JWT token
         See current user. 
     """
-    current_user = get_jwt_identity()
+    current_user = get_jwt_identity(expires_delta=timedelta(hours=1))
     return jsonify(logged_in_as=current_user), 200
 
 
