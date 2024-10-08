@@ -62,7 +62,7 @@ def see_followers():
 @jwt_required()
 def is_following(id):
     """
-        GET /users/followers/<id>
+        GET /users/following/<id>
         Returns true if current user follows user
     """
 
