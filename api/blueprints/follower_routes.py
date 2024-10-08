@@ -11,7 +11,7 @@ from api.blueprints.user_routes import user_routes
 def add_following():
     """
         POST /users/following
-        Add interest to user
+        Makes current user follow other user
     """
 
     current_user = get_jwt_identity()
@@ -54,6 +54,27 @@ def see_followers():
                 follower_names.append(res["name"])
 
         return jsonify({"payload":follower_names}),200
+    
+    else:
+        return jsonify({"msg":"No such user found"}),404
+    
+@user_routes.get("/following/<id>")
+@jwt_required()
+def is_following(id):
+    """
+        GET /users/followers/<id>
+        Returns true if current user follows user
+    """
+
+    current_user = get_jwt_identity()
+    user = db.users.find_one({"name":current_user})
+
+    if user:
+        following = db.followers.find_one({"follower_id":str(user["_id"]),"followed_id":id})
+        if following:
+            return jsonify(payload=True),200
+        
+        return jsonify(payload=False),200
     
     else:
         return jsonify({"msg":"No such user found"}),404
