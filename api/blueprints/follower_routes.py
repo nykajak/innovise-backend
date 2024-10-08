@@ -5,12 +5,14 @@ from pymongo.errors import DuplicateKeyError
 from flask_jwt_extended import create_access_token,get_jwt_identity,jwt_required
 from api.blueprints.user_routes import user_routes 
 
-
 @user_routes.post("/following")
 @jwt_required()
-def add_following():
+def manage_following():
     """
         POST /users/following
+        Body:
+            name: User name to follow/remove
+            delete: 0 if create 1 if delete
         Makes current user follow other user
     """
 
@@ -18,19 +20,29 @@ def add_following():
     current_user = db.users.find_one({"name":current_user})
 
     other_user = request.form.get("name")
+    operation = int(request.form.get("delete"))
+
     other_user = db.users.find_one({"name":other_user})
 
     if other_user:
         follower_id = str(current_user["_id"])
         followed_id = str(other_user["_id"])
 
-        try:
-            followed_obj_id = db.followers.insert_one({"follower_id":follower_id, "followed_id": followed_id}).inserted_id
-            res = {x:str(y) for x,y in db.followers.find_one({"_id":followed_obj_id}).items()}
-            return jsonify({"payload":res}),200
+        if operation == 0:
+            try:
+                followed_obj_id = db.followers.insert_one({"follower_id":follower_id, "followed_id": followed_id}).inserted_id
+                res = {x:str(y) for x,y in db.followers.find_one({"_id":followed_obj_id}).items()}
+                return jsonify({"payload":res}),200
 
-        except DuplicateKeyError as e:
-            return jsonify({"msg":"Follower already added!"}),400
+            except DuplicateKeyError as e:
+                return jsonify({"msg":"Follower already added!"}),400
+            
+        else: 
+            num_deleted = db.followers.delete_one({"follower_id":follower_id, "followed_id": followed_id}).deleted_count
+            if num_deleted == 1:
+                return jsonify(delete=True),200
+            
+            return jsonify(delete=False),400
     
     else:
         return jsonify({"msg":"User not found!"}),404
