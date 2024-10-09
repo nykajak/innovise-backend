@@ -126,8 +126,9 @@ def follower_suggestions():
 
     l = [ObjectId(x["_id"]) for x in u_ids]
     users = db.users.find({"_id":{"$in":l}}).limit(4)
-    users = [u["name"] for u in users if u["_id"] != user["_id"]]
+    users = [{"name":u["name"],"fullname":u["fullname"],"picture":""} for u in users if u["_id"] != user["_id"]]
 
     if len(users) == 0:
-        users = [db.users.find_one({"name":"Dummy"})["name"]]
+        u = db.users.find_one({"name":"Dummy"})
+        users = [{"name":u["name"],"fullname":u["fullname"],"picture":""}]
     return jsonify(payload=users),200
