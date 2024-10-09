@@ -125,10 +125,9 @@ def follower_suggestions():
     ])
 
     l = [ObjectId(x["_id"]) for x in u_ids]
-    users = db.users.aggregate([
-        {
-            "$match": {"_id":{"$in":l}}
-        }
-    ])
+    users = db.users.find({"_id":{"$in":l}}).limit(4)
     users = [u["name"] for u in users if u["_id"] != user["_id"]]
+
+    if len(users) == 0:
+        users = [db.users.find_one({"name":"Dummy"})["name"]]
     return jsonify(payload=users),200
