@@ -90,3 +90,45 @@ def is_following(id):
     
     else:
         return jsonify({"msg":"No such user found"}),404
+    
+@user_routes.get("/suggestions")
+@jwt_required()
+def follower_suggestions():
+    current_user = get_jwt_identity()
+    user = db.users.find_one({"name":current_user})
+    interests = db.interests.find({"user_id":str(user["_id"])})
+    l = [x["tag_id"] for x in interests]
+    u_ids = db.interests.aggregate([
+        {
+            "$match" : {
+                "tag_id" : {
+                    "$in" : l
+                }
+            }
+        },
+        { 
+        "$group" :  
+            {
+                "_id" : "$user_id",   
+                "total" : {"$sum" : 1} 
+        }},
+        {
+            "$sort" : {
+                "total" : 1
+            }
+        },
+        {
+            "$project" : {
+                "user_id" : 1
+            }
+        }
+    ])
+
+    l = [ObjectId(x["_id"]) for x in u_ids]
+    users = db.users.aggregate([
+        {
+            "$match": {"_id":{"$in":l}}
+        }
+    ])
+    users = [u["name"] for u in users if u["_id"] != user["_id"]]
+    return jsonify(payload=users),200
