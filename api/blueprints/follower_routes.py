@@ -95,7 +95,13 @@ def is_following(id):
 @jwt_required()
 def follower_suggestions():
     current_user = get_jwt_identity()
+
     user = db.users.find_one({"name":current_user})
+    already_followed = db.followers.find({
+        "follower_id": str(user["_id"])
+    })
+
+    already_followed = [x["followed_id"] for x in already_followed]
     interests = db.interests.find({"user_id":str(user["_id"])})
     l = [x["tag_id"] for x in interests]
     u_ids = db.interests.aggregate([
@@ -112,6 +118,13 @@ def follower_suggestions():
                 "_id" : "$user_id",   
                 "total" : {"$sum" : 1} 
         }},
+        {
+            "$match" : {
+                "user_id" : {
+                    "$nin" : l
+                }
+            }
+        },
         {
             "$sort" : {
                 "total" : 1
