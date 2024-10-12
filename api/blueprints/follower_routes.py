@@ -109,6 +109,9 @@ def follower_suggestions():
             "$match" : {
                 "tag_id" : {
                     "$in" : l
+                },
+                "user_id" : {
+                    "$nin" : already_followed
                 }
             }
         },
@@ -118,13 +121,6 @@ def follower_suggestions():
                 "_id" : "$user_id",   
                 "total" : {"$sum" : 1} 
         }},
-        {
-            "$match" : {
-                "user_id" : {
-                    "$nin" : l
-                }
-            }
-        },
         {
             "$sort" : {
                 "total" : 1
