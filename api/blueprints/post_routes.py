@@ -1,0 +1,95 @@
+from api import db
+from flask import jsonify,request
+from flask_pymongo import ObjectId
+from pymongo.errors import DuplicateKeyError
+from flask_jwt_extended import get_jwt_identity,jwt_required
+from api.blueprints.user_routes import user_routes 
+
+
+@user_routes.get("/post/<uid>")
+def see_posts(uid):
+    res = db.posts.aggregate([
+        {
+            "$match": {
+                "user_id": {
+                    "$eq": uid
+                }
+            }
+        }
+    ])  
+    res = [{x:str(y) for x,y in z.items()} for z in res]
+    for i in range(len(res)):
+        r = res[i]
+        tags = db.topics.aggregate([
+            {
+                "$match": {
+                    "post_id" : {
+                        "$eq" : r["_id"]
+                    }
+                }
+            }
+        ])
+        l = [ObjectId(x["tag_id"]) for x in tags]
+        tags = db.tags.aggregate([
+            {
+                "$match": {
+                    "_id" : {
+                        "$in" : l
+                    }
+                }
+            }
+        ])
+        r["tags"] = [t["name"] for t in tags] 
+        res[i] = r
+
+
+    return jsonify(payload=res),200
+
+@user_routes.post("/post")
+@jwt_required()
+def add_post():
+    current_user = get_jwt_identity()
+    user = db.users.find_one({"name":current_user})
+
+    content =request.form.get("content")
+    _type  =request.form.get("type")
+    num = int(request.form.get("num"))
+
+    p_id = db.posts.insert_one(
+            {
+                "user_id": str(user["_id"]),
+                "content": content,
+                "type" : _type
+            }
+        ).inserted_id
+    
+    tags = []
+    for i in range(1,num+1):
+        tag = request.form.get(f"tag[{i}]")
+        tags.append(tag)
+
+    t_docs = db.tags.aggregate([
+        {
+            "$match" : {
+                "name": {
+                    "$in" : tags
+                }
+            }
+        }
+    ])
+
+    to_insert = []
+    for t in t_docs:
+        to_insert.append(
+            {
+                "post_id" : str(p_id),
+                "tag_id" : str(t["_id"])
+            }
+        )
+
+
+    t_ids = db.topics.insert_many(
+            to_insert, ordered=False
+        ).inserted_ids
+
+    return jsonify(payload=len(t_ids)),200

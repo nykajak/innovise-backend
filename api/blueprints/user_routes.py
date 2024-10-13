@@ -130,4 +130,5 @@ def see_current():
 
 import api.blueprints.interest_routes 
 import api.blueprints.follower_routes
+import api.blueprints.post_routes
 app.register_blueprint(user_routes,url_prefix="/users")
