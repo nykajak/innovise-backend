@@ -1,13 +1,40 @@
-from api import db
-from flask import jsonify,request
+from api import db,app
+from flask import Blueprint,jsonify,request
 from flask_pymongo import ObjectId
 from pymongo.errors import DuplicateKeyError
 from flask_jwt_extended import get_jwt_identity,jwt_required
 from api.blueprints.user_routes import user_routes 
 
+# post_routes = Blueprint("post_routes", __name__)
+
+# @post_routes.get("/<pid>")
+# def see_specific_post(pid):
+#     """
+#         GET /post/<pid>
+#         Returns a specific post
+#     """
+
+#     res = db.posts.aggregate([
+#         {
+#             "$match": {
+#                 "_id": {
+#                     "$eq": ObjectId(pid)
+#                 }
+#             }  
+#         },
+#         {
+#             "$lookup": {
+#                 "from" :
+#             }
+#         }
+#     ])
 
 @user_routes.get("/post/<uid>")
 def see_posts(uid):
+    """
+        GET /user/post/<uid>
+        Returns all posts by a user given user id
+    """
     res = db.posts.aggregate([
         {
             "$match": {
@@ -48,6 +75,16 @@ def see_posts(uid):
 @user_routes.post("/post")
 @jwt_required()
 def add_post():
+    """
+        POST /user/post
+        Body:
+            num = number of tags
+            tag[1] = First tag
+            tag[2] = second tag and so on
+            content = content
+            type = intership/project etc
+        Adds a new post given
+    """
     current_user = get_jwt_identity()
     user = db.users.find_one({"name":current_user})
 
@@ -93,3 +130,5 @@ def add_post():
         ).inserted_ids
 
     return jsonify(payload=len(t_ids)),200
+
+# app.register_blueprint(post_routes,url_prefix="/post")
