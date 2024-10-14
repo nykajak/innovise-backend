@@ -58,14 +58,14 @@ def see_followers():
     user = db.users.find_one({"name":current_user})
     if user:
         followers = db.followers.find({"followed_id":str(user["_id"])})
-        follower_names = []
+        follower_data = []
 
         for i in followers:
             res = db.users.find_one({"_id":ObjectId(i["follower_id"])})
             if res:
-                follower_names.append(res["name"])
+                follower_data.append({"name":res["name"],"fullname":res["fullname"],"picture":""})
 
-        return jsonify({"payload":follower_names}),200
+        return jsonify({"payload":follower_data}),200
     
     else:
         return jsonify({"msg":"No such user found"}),404
