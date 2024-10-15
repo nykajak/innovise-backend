@@ -4,10 +4,16 @@ from api import app,db,jwt
 from flask import Blueprint,jsonify,redirect,request,url_for
 from flask_pymongo import ObjectId
 from pymongo.errors import DuplicateKeyError
-from flask_jwt_extended import create_access_token,get_jwt_identity,jwt_required
+from flask_jwt_extended import create_access_token,get_jwt_identity,jwt_required,get_jwt
 from datetime import timedelta 
 
 user_routes = Blueprint("user_routes", __name__)
+
+blockList = set()
+
+@jwt.token_in_blocklist_loader
+def check_if_token_in_blocklist(jwt_header, jwt_payload):
+    return jwt_payload["jti"] in blockList
 
 @user_routes.get("/name/<name>")
 def get_id(name):
@@ -115,6 +121,13 @@ def login():
         return jsonify(access_token=access_token),200
     
     return jsonify({"msg": "Incorrect username or password"}), 401
+
+@user_routes.get("/logout")
+@jwt_required()
+def logout():
+    jti = get_jwt()["jti"]
+    blockList.add(jti)
+    return jsonify(payload=get_jwt()["sub"]),200
 
 @user_routes.get("/current")
 @jwt_required()
