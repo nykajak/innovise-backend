@@ -125,6 +125,11 @@ def login():
 @user_routes.get("/logout")
 @jwt_required()
 def logout():
+    """
+        GET /users/logout
+        Add Bearer Token: JWT token
+        Logout current user. 
+    """
     jti = get_jwt()["jti"]
     blockList.add(jti)
     return jsonify(payload=get_jwt()["sub"]),200
