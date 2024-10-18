@@ -96,7 +96,7 @@ def get_user(id):
 def delete_user(id):
     """
         DELETE /users/<id> 
-        Deletes a user with given id.
+        Deletes a user with given id. Not to be in final product.
     """
 
     res = db.users.find_one_and_delete({"_id":ObjectId(id)})

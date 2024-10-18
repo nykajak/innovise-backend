@@ -94,6 +94,9 @@ def is_following(id):
 @user_routes.get("/suggestions")
 @jwt_required()
 def follower_suggestions():
+    """
+        GET /users/suggestions
+    """
     current_user = get_jwt_identity()
 
     user = db.users.find_one({"name":current_user})
@@ -111,8 +114,9 @@ def follower_suggestions():
                     "$in" : l
                 },
                 "user_id" : {
-                    "$nin" : already_followed
-                }
+                    "$nin" : already_followed,
+                    "$ne" : str(user["_id"])
+                },
             }
         },
         { 
@@ -123,21 +127,31 @@ def follower_suggestions():
         }},
         {
             "$sort" : {
-                "total" : 1
+                "total" : -1
             }
         },
         {
-            "$project" : {
-                "user_id" : 1
-            }
+            "$limit":4
         }
     ])
 
     l = [ObjectId(x["_id"]) for x in u_ids]
-    users = db.users.find({"_id":{"$in":l}}).limit(4)
-    users = [{"name":u["name"],"fullname":u["fullname"],"picture":""} for u in users if u["_id"] != user["_id"]]
+    users = db.users.find({"_id":{"$in":l}})
+    temp = {str(x["_id"]):{"name":x["name"],"fullname":x["fullname"],"picture":""} for x in users}
+    users = [temp[str(i)] for i in l]
 
     if len(users) == 0:
-        u = db.users.find_one({"name":"Dummy"})
-        users = [{"name":u["name"],"fullname":u["fullname"],"picture":""}]
+        u = db.users.aggregate(
+            {
+                "$match": {
+                    "_id" : {
+                        "$ne" : user["_id"]
+                    }
+                }
+            },
+            {
+                "$limit":1
+            }
+        )
+        users = [{"name":x["name"],"fullname":x["fullname"],"picture":""} for x in u]
     return jsonify(payload=users),200
