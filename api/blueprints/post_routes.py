@@ -5,30 +5,6 @@ from pymongo.errors import DuplicateKeyError
 from flask_jwt_extended import get_jwt_identity,jwt_required
 from api.blueprints.user_routes import user_routes 
 
-# post_routes = Blueprint("post_routes", __name__)
-
-# @post_routes.get("/<pid>")
-# def see_specific_post(pid):
-#     """
-#         GET /post/<pid>
-#         Returns a specific post
-#     """
-
-#     res = db.posts.aggregate([
-#         {
-#             "$match": {
-#                 "_id": {
-#                     "$eq": ObjectId(pid)
-#                 }
-#             }  
-#         },
-#         {
-#             "$lookup": {
-#                 "from" :
-#             }
-#         }
-#     ])
-
 @user_routes.get("/post/<uid>")
 def see_posts(uid):
     """
@@ -66,7 +42,7 @@ def see_posts(uid):
                 }
             }
         ])
-        r["tags"] = [t["name"] for t in tags] 
+        r["tags"] = [t["name"].title() for t in tags] 
         res[i] = r
 
 
@@ -103,7 +79,7 @@ def add_post():
     tags = []
     for i in range(1,num+1):
         tag = request.form.get(f"tag[{i}]")
-        tags.append(tag)
+        tags.append(tag.lower())
 
     t_docs = db.tags.aggregate([
         {
@@ -130,5 +106,3 @@ def add_post():
         ).inserted_ids
 
     return jsonify(payload=len(t_ids)),200
-
-# app.register_blueprint(post_routes,url_prefix="/post")

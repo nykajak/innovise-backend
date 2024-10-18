@@ -5,6 +5,16 @@ from pymongo.errors import DuplicateKeyError
 from flask_jwt_extended import get_jwt_identity,jwt_required
 from api.blueprints.user_routes import user_routes 
 
+@user_routes.get("/tags")
+def all_interests():
+    """
+        Return set of all interests
+    """
+    payload = []
+    for x in db.tags.find():
+        payload.append(x["name"].title())
+    return jsonify(payload=payload)
+
 
 @user_routes.post("/interests")
 @jwt_required()
@@ -26,7 +36,7 @@ def add_interest():
     num_success = 0
     for i in range(1,n+1):
         interest = request.form.get(f"interest[{i}]")
-        interest = db.tags.find_one({"name":interest})
+        interest = db.tags.find_one({"name":interest.lower()})
 
         if interest:
             user_id = str(current_user["_id"])
@@ -57,7 +67,7 @@ def see_interests(id):
         for i in interests:
             res = db.tags.find_one({"_id":ObjectId(i["tag_id"])})
             if res:
-                interest_names.append(res["name"])
+                interest_names.append(res["name"].title())
 
         return jsonify({"payload":interest_names}),200
     
