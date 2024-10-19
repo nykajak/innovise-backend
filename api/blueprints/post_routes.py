@@ -202,3 +202,42 @@ def add_post():
         ).inserted_ids
 
     return jsonify(payload=len(t_ids)),200
+
+@user_routes.post("/like")
+@jwt_required()
+def manage_like():
+    """
+        POST /user/like
+        Body:
+            post_id = id of post to like
+            like = 1 if like 0 to remove like
+    """
+
+    current_user = get_jwt_identity()
+    user = db.users.find_one({"name":current_user})
+
+    post_id = request.form.get("post_id",None)
+    mode = request.form.get("like",None)
+
+    if post_id is None or mode is None:
+        return jsonify(msg="Malformed request!"),400
+    
+    if int(mode) == 1:
+        try:
+            db.likes.insert_one({
+                "user_id":str(user["_id"]),
+                "post_id":post_id,
+            })
+
+            return jsonify(payload=True),200
+        
+        except DuplicateKeyError as e:
+            return jsonify(msg="Liked an already liked post!"),400
+    
+    else:
+        db.likes.delete_one({
+                "user_id":str(user["_id"]),
+                "post_id":post_id,
+        })
+
+    return jsonify(payload=True),200
