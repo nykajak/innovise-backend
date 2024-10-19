@@ -68,6 +68,16 @@ def suggest_posts():
         post_tags = [x["name"].title() for x in post_tags]
         d = {x:str(y) for x,y in p.items()}
         d["tags"] = post_tags
+        links = []
+        if "link1" in d:
+            links.append(d["link1"])
+            del d["link1"]
+        
+        if "link2" in d:
+            links.append(d["link2"])
+            del d["link2"]
+
+        d["links"] = links
         found_posts.append(d)
 
     return jsonify(payload=found_posts)
@@ -109,7 +119,18 @@ def see_posts(uid):
                 }
             }
         ])
-        r["tags"] = [t["name"].title() for t in tags] 
+        r["tags"] = [t["name"].title() for t in tags]
+        links = []
+        if "link1" in r:
+            links.append(r["link1"])
+            del r["link1"]
+        
+        if "link2" in r:
+            links.append(r["link2"])
+            del r["link2"]
+
+        r["links"] = links
+
         res[i] = r
 
 
@@ -126,6 +147,8 @@ def add_post():
             tag[2] = second tag and so on
             content = content
             type = intership/project etc
+            link[1] = first link
+            link[2] = second link
         Adds a new post given
     """
     current_user = get_jwt_identity()
@@ -134,15 +157,21 @@ def add_post():
     content =request.form.get("content")
     _type  =request.form.get("type")
     num = int(request.form.get("num"))
+    link1 = request.form.get("link[1]",None)
+    link2 = request.form.get("link[2]",None)
 
-    p_id = db.posts.insert_one(
-            {
-                "user_id": str(user["_id"]),
-                "content": content,
-                "type" : _type
-            }
-        ).inserted_id
-    
+    obj = {
+        "user_id": str(user["_id"]),
+        "content": content,
+        "type" : _type,
+    }
+
+    if link1:
+        obj["link1"] = link1
+    if link2:
+        obj["link2"] = link2
+
+    p_id = db.posts.insert_one(obj).inserted_id        
     tags = []
     for i in range(1,num+1):
         tag = request.form.get(f"tag[{i}]")
