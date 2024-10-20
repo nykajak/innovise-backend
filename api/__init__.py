@@ -15,6 +15,6 @@ with app.app_context():
     jwt = JWTManager(current_app)
     fs = GridFS(db)
 
-CORS(app)
+CORS(app,origins=["http://localhost:3000"],supports_credentials=True)
 
 from api import routes

@@ -72,7 +72,7 @@ def add_user():
     
     return jsonify({"msg":"Malformed Request!"}), 400
 
-@user_routes.get("/<id>")
+@user_routes.route("/<id>",methods=["GET","PUT"])
 def get_user(id):
     """
         GET /users/<id>
