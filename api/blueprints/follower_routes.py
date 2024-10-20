@@ -141,7 +141,7 @@ def follower_suggestions():
     users = [temp[str(i)] for i in l]
 
     if len(users) == 0:
-        u = db.users.aggregate(
+        u = db.users.aggregate([
             {
                 "$match": {
                     "_id" : {
@@ -152,6 +152,6 @@ def follower_suggestions():
             {
                 "$limit":1
             }
-        )
+        ])
         users = [{"name":x["name"],"fullname":x["fullname"],"picture":""} for x in u]
     return jsonify(payload=users),200

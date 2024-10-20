@@ -78,16 +78,27 @@ def suggest_posts():
             del d["link2"]
 
         d["links"] = links
+
+        likes = db.likes.count_documents({"post_id" : str(d["_id"])})
+        d["likes"] = likes
+
+        liked = db.likes.count_documents({"user_id" : str(user["_id"]),"post_id" : str(d["_id"])})
+        d["has_liked"] = 1 if liked > 0 else 0
         found_posts.append(d)
 
     return jsonify(payload=found_posts)
 
 @user_routes.get("/post/<uid>")
+@jwt_required()
 def see_posts(uid):
     """
         GET /user/post/<uid>
         Returns all posts by a user given user id
     """
+
+    current_user = get_jwt_identity()
+    user = db.users.find_one({"name":current_user})
+
     res = db.posts.aggregate([
         {
             "$match": {
@@ -131,6 +142,12 @@ def see_posts(uid):
 
         r["links"] = links
 
+        likes = db.likes.count_documents({"post_id" : str(r["_id"])})
+        r["likes"] = likes
+
+        liked = db.likes.count_documents({"user_id" : str(user["_id"]),"post_id" : str(r["_id"])})
+        r["has_liked"] = 1 if liked > 0 else 0
+        
         res[i] = r
 
 
