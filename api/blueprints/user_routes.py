@@ -80,7 +80,7 @@ def get_user(id):
     """
     obj = db.users.find_one({"_id":ObjectId(id)})
     if obj:
-        obj = {x:str(y) for x,y in obj.items() if x in ["name","fullname", "bio", "_id","picture"]}
+        obj = {x:str(y) for x,y in obj.items() if x in ["name","fullname","email", "bio", "_id","picture"]}
         obj["picture"] = base64.b64encode(fs.get(ObjectId(obj["picture"])).read()).decode("utf-8")
         return jsonify({"payload":obj}),200
     else:
