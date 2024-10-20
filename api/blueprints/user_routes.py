@@ -139,6 +139,50 @@ def see_current():
     current_user = get_jwt_identity()
     return jsonify(logged_in_as=current_user), 200
 
+@user_routes.put("/")
+@jwt_required()
+def edit_user():
+    """
+        PUT /users
+        Body:
+            email: user email
+            fullname: user full name
+            bio: user bio
+            picture: profile picture file
+            num: Number of tags
+            tags[1] Tag 1
+            tags[2] Tag 2
+        Edit current user
+    """
+    current_user = get_jwt_identity()
+    user = db.users.find_one({"name": current_user})
+
+    filter_obj = {"name": current_user}
+    edit_obj = {}
+
+    email = request.form.get("email",None)
+    fullname = request.form.get("fullname",None)
+    bio = request.form.get("bio",None)
+    picture = request.files.get("picture",None)
+
+    if email:
+        edit_obj["email"] = email
+
+    if fullname:
+        edit_obj["fullname"] = fullname
+
+    if bio:
+        edit_obj["bio"] = bio
+
+    if picture:
+        if user["picture"] != DEFAULT_PIC:
+            fs.delete(ObjectId(user["picture"]))
+        pic_id = fs.put(picture)
+        edit_obj["picture"] = pic_id        
+
+    db.users.update_one(filter_obj,{"$set":edit_obj})
+    return redirect(url_for("user_routes.get_user",id=str(user["_id"])))
+
 
 import api.blueprints.interest_routes 
 import api.blueprints.follower_routes
