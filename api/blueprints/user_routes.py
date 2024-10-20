@@ -1,15 +1,17 @@
 # File containing user related routes
 
-from api import app,db,jwt
+from api import app,db,jwt,fs
 from flask import Blueprint,jsonify,redirect,request,url_for
 from flask_pymongo import ObjectId
 from pymongo.errors import DuplicateKeyError
 from flask_jwt_extended import create_access_token,get_jwt_identity,jwt_required,get_jwt
 from datetime import timedelta 
+import base64
 
 user_routes = Blueprint("user_routes", __name__)
 
 blockList = set()
+DEFAULT_PIC = "67149a819a28e628c1b14202"
 
 @jwt.token_in_blocklist_loader
 def check_if_token_in_blocklist(jwt_header, jwt_payload):
@@ -49,26 +51,17 @@ def add_user():
     name = request.form.get("name",None)
     password = request.form.get("password",None)
     fullname = request.form.get("fullname",name)
-    bio = request.form.get("bio",None)
+    bio = request.form.get("bio","None")
 
     if email and name and password:
         try:
-            if bio:
-                id = db.users.insert_one({
+            id = db.users.insert_one({
                     "name":name,
                     "email":email,
                     "password":password,
                     "fullname":fullname,
-                    "bio":bio
-                }).inserted_id
-
-            else:
-                id = db.users.insert_one({
-                    "name":name,
-                    "email":email,
-                    "password":password,
-                    "fullname":fullname,
-                    "bio":"None"
+                    "bio":bio,
+                    "picture":DEFAULT_PIC
                 }).inserted_id
 
             return redirect(url_for("user_routes.get_user",id=id))
@@ -87,7 +80,8 @@ def get_user(id):
     """
     obj = db.users.find_one({"_id":ObjectId(id)})
     if obj:
-        obj = {x:str(y) for x,y in obj.items() if x in ["name","fullname", "bio", "_id"]}
+        obj = {x:str(y) for x,y in obj.items() if x in ["name","fullname", "bio", "_id","picture"]}
+        obj["picture"] = base64.b64encode(fs.get(ObjectId(obj["picture"])).read()).decode("utf-8")
         return jsonify({"payload":obj}),200
     else:
         return jsonify({"msg":"User not found!"}), 404
