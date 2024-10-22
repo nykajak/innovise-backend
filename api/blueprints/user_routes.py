@@ -26,7 +26,7 @@ def get_id(name):
 
     obj = db.users.find_one({"name":name})
     if obj:
-        obj = {x:str(y) for x,y in obj.items() if x in ["name","fullname", "bio", "_id"]}
+        obj = {x:str(y) for x,y in obj.items() if x in ["name","fullname", "bio", "_id","picture"]}
         return jsonify({"payload":obj}),200
     else:
         return jsonify({"msg":"User not found!"}), 404
