@@ -41,9 +41,6 @@ def suggest_posts():
             "$sort" : {
                 "total" : -1
             }
-        },
-        {
-            "$limit":4
         }
     ])
 
