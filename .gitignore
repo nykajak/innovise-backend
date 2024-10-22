@@ -1,6 +1,7 @@
 .env
 local_run.sh
 local_run.py
+local_run2.py
 test.py
 __pycache__
 test.*
