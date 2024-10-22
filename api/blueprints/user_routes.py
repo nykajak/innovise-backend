@@ -149,7 +149,8 @@ def edit_user():
             fullname: user full name
             bio: user bio
             picture: profile picture file
-            No support for tags yet
+            num: Number of interests
+            interst[1],interest[2] : interests
         Edit current user
     """
     current_user = get_jwt_identity()
