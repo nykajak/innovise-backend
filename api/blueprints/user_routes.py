@@ -162,6 +162,7 @@ def edit_user():
     fullname = request.form.get("fullname",None)
     bio = request.form.get("bio",None)
     picture = request.files.get("picture",None)
+    num = request.form.get("num",None)
 
     if email:
         edit_obj["email"] = email
@@ -176,7 +177,23 @@ def edit_user():
         if user["picture"] != DEFAULT_PIC:
             fs.delete(ObjectId(user["picture"]))
         pic_id = fs.put(picture)
-        edit_obj["picture"] = pic_id        
+        edit_obj["picture"] = pic_id
+
+    if num and int(num) >= 1:
+        interests= []
+        for i in range(int(num)):
+            interests.append(request.form.get(f"interest[{i+1}]").lower())
+
+        tag_ids = [str(x["_id"]) for x in db.tags.aggregate([
+            {
+                "$match" : {
+                    "name" : {
+                        "$in" : interests
+                    }
+                }
+            }
+        ])]
+        db.interests.delete_many({"tag_id":{"$nin":tag_ids}})
 
     db.users.update_one(filter_obj,{"$set":edit_obj})
     return redirect(url_for("user_routes.get_user",id=str(user["_id"])))
