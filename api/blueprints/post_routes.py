@@ -150,6 +150,42 @@ def see_posts(uid):
 
     return jsonify(payload=res),200
 
+@app.get("/post/<id>")
+def see_specific_post():
+    """
+        GET /post/<id>
+        Returns a specific post
+    """
+
+    current_user = get_jwt_identity()
+    user = db.users.find_one({"name":current_user})
+
+    post = db.posts.find_one({"_id":ObjectId(id)})
+    res = {x:str(y) for x,y in post.items()}
+
+    t_ids = [ObjectId(x["tag_id"]) for x in db.topics.find({"post_id":id})]
+    tags = [x["name"] for x in db.tags.find({"_id" : {"$in":t_ids}})]
+    res["tags"]=tags
+
+    likes = db.likes.count_documents({"post_id":id})
+    res["likes"]=likes
+
+    has_liked = 1 if db.likes.count_documents({"post_id":id,"user_id":user["id"]}) > 0 else 0
+    res["has_liked"]=has_liked
+
+    links = []
+    if "link1" in res:
+        links.append(res["link1"])
+        del res["link1"]
+    
+    if "link2" in res:
+        links.append(res["link2"])
+        del res["link2"]
+
+    res["links"] = links
+
+    return jsonify(payload=res),200
+
 @user_routes.post("/post")
 @jwt_required()
 def add_post():
