@@ -165,7 +165,7 @@ def see_specific_post(id):
     res = {x:str(y) for x,y in post.items()}
 
     t_ids = [ObjectId(x["tag_id"]) for x in db.topics.find({"post_id":id})]
-    tags = [x["name"] for x in db.tags.find({"_id" : {"$in":t_ids}})]
+    tags = [x["name"].title() for x in db.tags.find({"_id" : {"$in":t_ids}})]
     res["tags"]=tags
 
     likes = db.likes.count_documents({"post_id":id})
