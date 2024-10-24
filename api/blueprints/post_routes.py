@@ -151,7 +151,8 @@ def see_posts(uid):
     return jsonify(payload=res),200
 
 @app.get("/post/<id>")
-def see_specific_post():
+@jwt_required()
+def see_specific_post(id):
     """
         GET /post/<id>
         Returns a specific post
@@ -170,7 +171,7 @@ def see_specific_post():
     likes = db.likes.count_documents({"post_id":id})
     res["likes"]=likes
 
-    has_liked = 1 if db.likes.count_documents({"post_id":id,"user_id":user["id"]}) > 0 else 0
+    has_liked = 1 if db.likes.count_documents({"post_id":id,"user_id":str(user["_id"])}) > 0 else 0
     res["has_liked"]=has_liked
 
     links = []
