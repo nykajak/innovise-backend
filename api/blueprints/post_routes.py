@@ -5,6 +5,25 @@ from pymongo.errors import DuplicateKeyError
 from flask_jwt_extended import get_jwt_identity,jwt_required
 from api.blueprints.user_routes import user_routes 
 
+@app.delete("/post/<id>")
+@jwt_required()
+def delete_posts(id):
+    """
+        DELETE /post/<id>
+        Deletes a post with given id.
+    """
+    current_user = get_jwt_identity()
+    user = db.users.find_one({"name":current_user})
+    
+    count = db.posts.delete_one({"user_id":str(user["_id"]),"_id":ObjectId(id)}).deleted_count
+    if count == 0:
+        return jsonify(msg="Insufficient permissions / unavailable resource"),400
+    
+    db.topics.delete_many({"post_id":id})
+    db.likes.delete_many({"post_id":id})
+
+    return jsonify(payload=True),200
+
 @user_routes.get("/post/suggestions")
 @jwt_required()
 def suggest_posts():
