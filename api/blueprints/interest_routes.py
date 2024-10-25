@@ -1,7 +1,7 @@
 from api import db
 from flask import jsonify,request
 from flask_pymongo import ObjectId
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import DuplicateKeyError,BulkWriteError
 from flask_jwt_extended import get_jwt_identity,jwt_required
 from api.blueprints.user_routes import user_routes 
 
@@ -33,24 +33,23 @@ def add_interest():
     current_user = db.users.find_one({"name":current_user})
 
     n = int(request.form.get("num"))
-    num_success = 0
+    
+    interests = []
     for i in range(1,n+1):
         interest = request.form.get(f"interest[{i}]")
-        interest = db.tags.find_one({"name":interest.lower()})
-
-        if interest:
-            user_id = str(current_user["_id"])
-            tag_id = str(interest["_id"])
-
-            try:
-                interest_id = db.interests.insert_one({"user_id":user_id, "tag_id": tag_id}).inserted_id
-                res = {x:str(y) for x,y in db.interests.find_one({"_id":interest_id}).items()}
-                num_success += 1
-
-            except DuplicateKeyError as e:
-                pass
+        interests.append(interest.lower())
     
-    return jsonify(payload=num_success),200
+    t_ids = [str(x["_id"]) for x in db.tags.find({"name":{
+        "$in" : interests
+    }})]
+
+    try:
+        db.interests.insert_many([{"user_id":str(current_user["_id"]),"tag_id":t_id} for t_id in t_ids],ordered=False).inserted_ids
+    
+    except BulkWriteError as e:
+        print(e.details)
+    
+    return jsonify(payload=True),200
 
 @user_routes.get("<id>/interests")
 def see_interests(id):
