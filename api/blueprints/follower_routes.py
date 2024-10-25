@@ -28,16 +28,16 @@ def manage_following():
         follower_id = str(current_user["_id"])
         followed_id = str(other_user["_id"])
 
-        if operation == 0:
+        if operation == 0: # If insertion
             try:
                 followed_obj_id = db.followers.insert_one({"follower_id":follower_id, "followed_id": followed_id}).inserted_id
-                res = {x:str(y) for x,y in db.followers.find_one({"_id":followed_obj_id}).items()}
+                res = {x:str(y) for x,y in db.followers.find_one({"_id":followed_obj_id}).items()} # Warning - Bad Pattern! (str)
                 return jsonify({"payload":res}),200
 
             except DuplicateKeyError as e:
                 return jsonify({"msg":"Follower already added!"}),400
             
-        else: 
+        else: # if deletion
             num_deleted = db.followers.delete_one({"follower_id":follower_id, "followed_id": followed_id}).deleted_count
             if num_deleted == 1:
                 return jsonify(delete=True),200
@@ -60,7 +60,7 @@ def see_followers():
         followers = db.followers.find({"followed_id":str(user["_id"])})
         follower_data = []
 
-        for i in followers:
+        for i in followers: # Warning - Bad Pattern! (loop)
             res = db.users.find_one({"_id":ObjectId(i["follower_id"])})
             if res:
                 follower_data.append({"name":res["name"],"fullname":res["fullname"],"picture":""})
@@ -107,6 +107,7 @@ def follower_suggestions():
     already_followed = [ObjectId(x["followed_id"]) for x in already_followed]
 
     u_ids = db.users.aggregate([
+        # Stage 1 - Remove all users who are already followed and yourself
         {
             "$match" : {
                 "_id" : {
@@ -115,6 +116,7 @@ def follower_suggestions():
                 },
             }
         },
+        # Stage 2 - Find all matching interests
         { "$unwind" : "$interests" },
         {
             "$match" : {
@@ -129,11 +131,13 @@ def follower_suggestions():
                 "interests" : {"$push" : "$interests"}
             }
         },
+        # Stage 3 - Find number of matching interests
         {
             "$project": { 
                 "interests" : { "$size" : "$interests" }
             }
         },
+        # Stage 4 - Sort and return ids of 4 suggested users
         {
             "$sort" : {
                 "interests": -1,
@@ -146,11 +150,13 @@ def follower_suggestions():
     ])
 
     l = [ObjectId(x["_id"]) for x in u_ids]
-    users = db.users.find({"_id":{"$in":l}})
-    temp = {str(x["_id"]):{"name":x["name"],"fullname":x["fullname"],"picture":str(x["picture"])} for x in users}
-    users = [temp[str(i)] for i in l]
+    users = db.users.find({"_id":{"$in":l}}) # Find users corresponding to ids. Note: this is not sorted
 
-    if len(users) == 0:
+    # Warning - Bad Pattern! (picture)
+    temp = {str(x["_id"]):{"name":x["name"],"fullname":x["fullname"],"picture":str(x["picture"])} for x in users}
+    users = [temp[str(i)] for i in l] # Sorted list of users
+
+    if len(users) == 0: # if no interests provided
         u = db.users.aggregate([
             {
                 "$match": {
@@ -163,5 +169,6 @@ def follower_suggestions():
                 "$limit":4
             }
         ])
+        # Warning - Bad Pattern! (picture)
         users = [{"name":x["name"],"fullname":x["fullname"],"picture":x["picture"]} for x in u]
     return jsonify(payload=users),200

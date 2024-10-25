@@ -8,6 +8,7 @@ from api.blueprints.user_routes import user_routes
 @user_routes.get("/tags")
 def all_interests():
     """
+        GET /users/tags
         Return set of all interests
     """
     payload = []
@@ -43,6 +44,7 @@ def add_interest():
         "$in" : interests
     }})]
     
+    # Warning - Bad Pattern! (set)
     db.users.update_one({"_id":current_user["_id"]},{"$set":{"interests":list(set(current_user["interests"]+t_ids))}})
     
     return jsonify(payload=True),200

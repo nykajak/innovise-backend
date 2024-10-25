@@ -37,6 +37,7 @@ def suggest_posts():
     own_posts = [x["_id"] for x in own_posts]
 
     res = db.posts.aggregate([
+        # Stage 1 - Remove all own posts
         {
             "$match" : {
                 "_id": {
@@ -44,6 +45,7 @@ def suggest_posts():
                 }
             }
         },
+        # Stage 2 - Find all matching interests
         { "$unwind" : "$topics" },
         {
             "$match" : {
@@ -58,11 +60,13 @@ def suggest_posts():
                 "topics" : {"$push" : "$topics"}
             }
         },
-         {
+        # Stage 3 - Find number of matching interests
+        {
             "$project": { 
                 "topics" : { "$size" : "$topics" }
             }
         },
+        # Stage 4 - Sort and return posts
         {
             "$sort" : {
                 "topics": -1,
@@ -128,7 +132,7 @@ def see_posts(uid):
             }
         }
     ])  
-    res = [{x:str(y) for x,y in z.items()} for z in res]
+    res = [{x:str(y) for x,y in z.items()} for z in res] # Warning - Bad Pattern! (str)
     for i in range(len(res)):
         r = res[i]
         l = [ObjectId(x) for x in r["topics"]]
