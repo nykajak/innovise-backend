@@ -42,12 +42,8 @@ def add_interest():
     t_ids = [str(x["_id"]) for x in db.tags.find({"name":{
         "$in" : interests
     }})]
-
-    try:
-        db.interests.insert_many([{"user_id":str(current_user["_id"]),"tag_id":t_id} for t_id in t_ids],ordered=False).inserted_ids
     
-    except BulkWriteError as e:
-        print(e.details)
+    db.users.update_one({"_id":current_user["_id"]},{"$set":{"interests":list(set(current_user["interests"]+t_ids))}})
     
     return jsonify(payload=True),200
 
@@ -60,13 +56,8 @@ def see_interests(id):
 
     user = db.users.find_one({"_id":ObjectId(id)})
     if user:
-        interests = db.interests.find({"user_id":str(user["_id"])})
-        interest_names = []
-
-        for i in interests:
-            res = db.tags.find_one({"_id":ObjectId(i["tag_id"])})
-            if res:
-                interest_names.append(res["name"].title())
+        interests = [ObjectId(x) for x in user["interests"]]
+        interest_names = [x["name"].title() for x in db.tags.find({"_id":{"$in":interests}})]
 
         return jsonify({"payload":interest_names}),200
     

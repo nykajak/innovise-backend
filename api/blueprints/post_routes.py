@@ -36,9 +36,7 @@ def suggest_posts():
     
     own_posts = db.posts.find({"user_id":str(user["_id"])})
     own_posts = [str(x["_id"]) for x in own_posts]
-    interests = db.interests.find({"user_id":str(user["_id"])})
-    l = [x["tag_id"] for x in interests]
-    
+
     res = db.topics.aggregate([
         {
             "$match" : {
@@ -46,7 +44,7 @@ def suggest_posts():
                     "$nin": own_posts
                 },
                 "tag_id" : {
-                    "$in" : l
+                    "$in" : user["interests"]
                 },
             }
         },

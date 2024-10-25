@@ -104,30 +104,40 @@ def follower_suggestions():
         "follower_id": str(user["_id"])
     })
 
-    already_followed = [x["followed_id"] for x in already_followed]
-    interests = db.interests.find({"user_id":str(user["_id"])})
-    l = [x["tag_id"] for x in interests]
-    u_ids = db.interests.aggregate([
+    already_followed = [ObjectId(x["followed_id"]) for x in already_followed]
+
+    u_ids = db.users.aggregate([
         {
             "$match" : {
-                "tag_id" : {
-                    "$in" : l
-                },
-                "user_id" : {
+                "_id" : {
                     "$nin" : already_followed,
-                    "$ne" : str(user["_id"])
+                    "$ne" : user["_id"]
                 },
             }
         },
-        { 
-        "$group" :  
-            {
-                "_id" : "$user_id",   
-                "total" : {"$sum" : 1} 
-        }},
+        { "$unwind" : "$interests" },
+        {
+            "$match" : {
+                "interests" : {
+                    "$in": user["interests"]   
+                }
+            }
+        },
+        {
+            "$group" : {
+                "_id" : "$_id",
+                "interests" : {"$push" : "$interests"}
+            }
+        },
+        {
+            "$project": { 
+                "interests" : { "$size" : "$interests" }
+            }
+        },
         {
             "$sort" : {
-                "total" : -1
+                "interests": -1,
+                "_id" : 1
             }
         },
         {
@@ -137,8 +147,9 @@ def follower_suggestions():
 
     l = [ObjectId(x["_id"]) for x in u_ids]
     users = db.users.find({"_id":{"$in":l}})
-    temp = {str(x["_id"]):{"name":x["name"],"fullname":x["fullname"],"picture":""} for x in users}
+    temp = {str(x["_id"]):{"name":x["name"],"fullname":x["fullname"],"picture":str(x["picture"])} for x in users}
     users = [temp[str(i)] for i in l]
+    print(users)
 
     if len(users) == 0:
         u = db.users.aggregate([
@@ -150,8 +161,8 @@ def follower_suggestions():
                 }
             },
             {
-                "$limit":1
+                "$limit":4
             }
         ])
-        users = [{"name":x["name"],"fullname":x["fullname"],"picture":""} for x in u]
+        users = [{"name":x["name"],"fullname":x["fullname"],"picture":x["picture"]} for x in u]
     return jsonify(payload=users),200

@@ -61,7 +61,8 @@ def add_user():
                     "password":password,
                     "fullname":fullname,
                     "bio":bio,
-                    "picture":DEFAULT_PIC
+                    "picture":DEFAULT_PIC,
+                    "interests":[]
                 }).inserted_id
 
             return redirect(url_for("user_routes.get_user",id=id))
@@ -150,7 +151,7 @@ def edit_user():
             bio: user bio
             picture: profile picture file
             num: Number of interests
-            interst[1],interest[2] : interests
+            interest[1],interest[2] : interests
         Edit current user
     """
     current_user = get_jwt_identity()
@@ -185,18 +186,8 @@ def edit_user():
         for i in range(int(num)):
             interests.append(request.form.get(f"interest[{i+1}]").lower())
 
-        tag_ids = [str(x["_id"]) for x in db.tags.aggregate([
-            {
-                "$match" : {
-                    "name" : {
-                        "$in" : interests
-                    }
-                }
-            }
-        ])]
-        db.interests.delete_many({"user_id":str(user["_id"])})
-        to_insert = [{"user_id":str(user["_id"]),"tag_id":t_id} for t_id in tag_ids]
-        db.interests.insert_many(to_insert)
+        tag_ids = [str(x["_id"]) for x in db.tags.find({ "name" : {"$in" : interests}})]
+        edit_obj["interests"] = tag_ids
 
     db.users.update_one(filter_obj,{"$set":edit_obj})
     return redirect(url_for("user_routes.get_user",id=str(user["_id"])))
