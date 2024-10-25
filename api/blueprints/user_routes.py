@@ -194,7 +194,9 @@ def edit_user():
                 }
             }
         ])]
-        db.interests.delete_many({"tag_id":{"$nin":tag_ids}})
+        db.interests.delete_many({"user_id":str(user["_id"])})
+        to_insert = [{"user_id":str(user["_id"]),"tag_id":t_id} for t_id in tag_ids]
+        db.interests.insert_many(to_insert)
 
     db.users.update_one(filter_obj,{"$set":edit_obj})
     return redirect(url_for("user_routes.get_user",id=str(user["_id"])))
