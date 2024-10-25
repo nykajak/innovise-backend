@@ -19,7 +19,6 @@ def delete_posts(id):
     if count == 0:
         return jsonify(msg="Insufficient permissions / unavailable resource"),400
     
-    db.topics.delete_many({"post_id":id})
     db.likes.delete_many({"post_id":id})
 
     return jsonify(payload=True),200
@@ -35,52 +34,59 @@ def suggest_posts():
     user = db.users.find_one({"name":current_user})
     
     own_posts = db.posts.find({"user_id":str(user["_id"])})
-    own_posts = [str(x["_id"]) for x in own_posts]
+    own_posts = [x["_id"] for x in own_posts]
 
-    res = db.topics.aggregate([
+    res = db.posts.aggregate([
         {
             "$match" : {
-                "post_id": {
+                "_id": {
                     "$nin": own_posts
-                },
-                "tag_id" : {
-                    "$in" : user["interests"]
-                },
+                }
+            }
+        },
+        { "$unwind" : "$topics" },
+        {
+            "$match" : {
+                "topics" : {
+                    "$in": user["interests"]   
+                }
             }
         },
         {
-            "$group": {
-                "_id" : "$post_id",
-                "total" : {"$sum" : 1} 
+            "$group" : {
+                "_id" : "$_id",
+                "topics" : {"$push" : "$topics"}
+            }
+        },
+         {
+            "$project": { 
+                "topics" : { "$size" : "$topics" }
             }
         },
         {
             "$sort" : {
-                "total" : -1
+                "topics": -1,
+                "_id" : 1
             }
-        }
+        },
     ])
 
 
     l = [ObjectId(x["_id"]) for x in res]
     posts = db.posts.find({"_id":{"$in":l}})
-    temp = {str(x["_id"]):{a:str(b) for a,b in x.items()} for x in posts}
+    temp = {str(p["_id"]):p for p in posts}
     posts = [temp[str(i)] for i in l]
+
     found_posts = []
     for p in posts:    
-        t_ids = [ObjectId(x["tag_id"]) for x in db.topics.find({"post_id":str(p["_id"])})]
+        t_ids = [ObjectId(x) for x in p["topics"]]
 
-        post_tags = db.tags.aggregate([
-            {
-                "$match": {
-                    "_id": {
-                        "$in" : t_ids
-                    }
-                }
-            }
-        ])
+        post_tags = db.tags.find({"_id": {"$in" : t_ids}})
         post_tags = [x["name"].title() for x in post_tags]
-        d = {x:str(y) for x,y in p.items()}
+
+        d = {x:y for x,y in p.items()}
+        d["_id"] = str(d["_id"])
+
         d["tags"] = post_tags
         links = []
         if "link1" in d:
@@ -125,16 +131,7 @@ def see_posts(uid):
     res = [{x:str(y) for x,y in z.items()} for z in res]
     for i in range(len(res)):
         r = res[i]
-        tags = db.topics.aggregate([
-            {
-                "$match": {
-                    "post_id" : {
-                        "$eq" : r["_id"]
-                    }
-                }
-            }
-        ])
-        l = [ObjectId(x["tag_id"]) for x in tags]
+        l = [ObjectId(x) for x in r["topics"]]
         tags = db.tags.aggregate([
             {
                 "$match": {
@@ -179,10 +176,10 @@ def see_specific_post(id):
     user = db.users.find_one({"name":current_user})
 
     post = db.posts.find_one({"_id":ObjectId(id)})
-    res = {x:str(y) for x,y in post.items()}
-
-    t_ids = [ObjectId(x["tag_id"]) for x in db.topics.find({"post_id":id})]
+    t_ids = [ObjectId(x) for x in post["topics"]]
     tags = [x["name"].title() for x in db.tags.find({"_id" : {"$in":t_ids}})]
+    
+    res = {x:str(y) for x,y in post.items() if x != "topics"}
     res["tags"]=tags
 
     likes = db.likes.count_documents({"post_id":id})
@@ -245,31 +242,10 @@ def add_post():
         tag = request.form.get(f"tag[{i}]")
         tags.append(tag.lower())
 
-    t_docs = db.tags.aggregate([
-        {
-            "$match" : {
-                "name": {
-                    "$in" : tags
-                }
-            }
-        }
-    ])
+    t_docs = [str(x["_id"]) for x in db.tags.find({"name": { "$in" : tags}})]
+    obj["topics"] = t_docs
 
-    to_insert = []
-    for t in t_docs:
-        to_insert.append(
-            {
-                "post_id" : str(p_id),
-                "tag_id" : str(t["_id"])
-            }
-        )
-
-
-    t_ids = db.topics.insert_many(
-            to_insert, ordered=False
-        ).inserted_ids
-
-    return jsonify(payload=len(t_ids)),200
+    return jsonify(payload=p_id),200
 
 @user_routes.post("/like")
 @jwt_required()

@@ -149,7 +149,6 @@ def follower_suggestions():
     users = db.users.find({"_id":{"$in":l}})
     temp = {str(x["_id"]):{"name":x["name"],"fullname":x["fullname"],"picture":str(x["picture"])} for x in users}
     users = [temp[str(i)] for i in l]
-    print(users)
 
     if len(users) == 0:
         u = db.users.aggregate([
