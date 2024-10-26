@@ -159,10 +159,11 @@ def follower_suggestions():
     if len(users) == 0: # if no interests provided
         u = db.users.aggregate([
             {
-                "$match": {
+                "$match" : {
                     "_id" : {
+                        "$nin" : already_followed,
                         "$ne" : user["_id"]
-                    }
+                    },
                 }
             },
             {

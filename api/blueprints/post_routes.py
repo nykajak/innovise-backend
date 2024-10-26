@@ -212,7 +212,7 @@ def add_post():
     obj["topics"] = t_docs
     p_id = db.posts.insert_one(obj).inserted_id        
 
-    return jsonify(payload=p_id),200
+    return jsonify(payload=str(p_id)),200
 
 @user_routes.post("/like")
 @jwt_required()
