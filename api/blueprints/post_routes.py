@@ -264,22 +264,37 @@ def filter_posts():
             num: Number of tags
             tag[1] : First tag
             tag[2] : Second tag
+            own : 0 by default 1
     """
     current_user = get_jwt_identity()
     user = db.users.find_one({"name":current_user})
 
     _type = request.form.get("type",None)
     num = int(request.form.get("num",0))
+    owner = request.form.get("owner",None)
     tags = []
     
-    own_posts = db.posts.find({"user_id":str(user["_id"])})
-    own_posts = [x["_id"] for x in own_posts]
-    pipeline = [
-        {
-            "$match" : {"_id": {"$nin": own_posts}}
-        }
-    ]
+    if owner is None:
+        own_posts = db.posts.find({"user_id":str(user["_id"])})
+        own_posts = [x["_id"] for x in own_posts]
+        pipeline = [
+            {
+                "$match" : {"_id": {"$nin": own_posts}}
+            }
+        ]
 
+    else:
+        target_user = db.users.find_one({"name":owner})
+        if target_user is None:
+            return jsonify(msg="No such user found"),400
+        
+        owned_posts = db.posts.find({"user_id":str(target_user["_id"])})
+        owned_posts = [x["_id"] for x in owned_posts]
+        pipeline = [
+            {
+                "$match" : {"_id": {"$in": owned_posts}}
+            }
+        ]
     
     if _type:
         pipeline.append({
