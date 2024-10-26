@@ -132,9 +132,12 @@ def see_posts(uid):
             }
         }
     ])  
-    res = [{x:str(y) for x,y in z.items()} for z in res] # Warning - Bad Pattern! (str)
+    res = [z for z in res] # Warning - Bad Pattern! (str)
     for i in range(len(res)):
         r = res[i]
+        r["_id"] = str(r["_id"])
+
+
         l = [ObjectId(x) for x in r["topics"]]
         tags = db.tags.aggregate([
             {
@@ -145,6 +148,9 @@ def see_posts(uid):
                 }
             }
         ])
+        
+        del r["topics"]
+        # Adding relevant data to response
         r["tags"] = [t["name"].title() for t in tags]
         links = []
         if "link1" in r:
@@ -183,6 +189,7 @@ def see_specific_post(id):
     t_ids = [ObjectId(x) for x in post["topics"]]
     tags = [x["name"].title() for x in db.tags.find({"_id" : {"$in":t_ids}})]
     
+    # Adding relevant data to response
     res = {x:str(y) for x,y in post.items() if x != "topics"}
     res["tags"]=tags
 

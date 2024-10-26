@@ -179,7 +179,7 @@ def edit_user():
         if user["picture"] != DEFAULT_PIC:
             fs.delete(ObjectId(user["picture"]))
         pic_id = fs.put(picture)
-        edit_obj["picture"] = pic_id
+        edit_obj["picture"] = str(pic_id)
 
     if num and int(num) >= 1:
         interests= []
