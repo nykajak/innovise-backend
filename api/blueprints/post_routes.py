@@ -1,9 +1,53 @@
-from api import db,app
+from api import db,app,fs
 from flask import Blueprint,jsonify,request
 from flask_pymongo import ObjectId
 from pymongo.errors import DuplicateKeyError
 from flask_jwt_extended import get_jwt_identity,jwt_required
 from api.blueprints.user_routes import user_routes 
+import base64
+
+
+def fetch_posts(user,p_ids):
+    posts = db.posts.find({"_id":{"$in":p_ids}})
+    temp = {str(p["_id"]):p for p in posts}
+    posts = [temp[str(i)] for i in p_ids]
+
+    found_posts = []
+    for p in posts:    
+        t_ids = [ObjectId(x) for x in p["topics"]]
+
+        post_tags = db.tags.find({"_id": {"$in" : t_ids}})
+        post_tags = [x["name"].title() for x in post_tags]
+
+        d = {x:y for x,y in p.items()}
+        d["_id"] = str(d["_id"])
+
+        specific_user = db.users.find_one({"_id" : ObjectId(d["user_id"])})
+        d["user_name"] = specific_user["name"]
+        d["user_fullname"] = specific_user["fullname"]
+        d["user_bio"] = specific_user["bio"]
+        d["picture"] = base64.b64encode(fs.get(ObjectId(specific_user["picture"])).read()).decode("utf-8")     
+
+        d["tags"] = post_tags
+        links = []
+        if "link1" in d:
+            links.append(d["link1"])
+            del d["link1"]
+        
+        if "link2" in d:
+            links.append(d["link2"])
+            del d["link2"]
+
+        d["links"] = links
+
+        likes = db.likes.count_documents({"post_id" : str(d["_id"])})
+        d["likes"] = likes
+
+        liked = db.likes.count_documents({"user_id" : str(user["_id"]),"post_id" : str(d["_id"])})
+        d["has_liked"] = 1 if liked > 0 else 0
+        found_posts.append(d)
+
+    return found_posts
 
 @app.delete("/post/<id>")
 @jwt_required()
@@ -77,39 +121,8 @@ def suggest_posts():
 
 
     l = [ObjectId(x["_id"]) for x in res]
-    posts = db.posts.find({"_id":{"$in":l}})
-    temp = {str(p["_id"]):p for p in posts}
-    posts = [temp[str(i)] for i in l]
 
-    found_posts = []
-    for p in posts:    
-        t_ids = [ObjectId(x) for x in p["topics"]]
-
-        post_tags = db.tags.find({"_id": {"$in" : t_ids}})
-        post_tags = [x["name"].title() for x in post_tags]
-
-        d = {x:y for x,y in p.items()}
-        d["_id"] = str(d["_id"])
-
-        d["tags"] = post_tags
-        links = []
-        if "link1" in d:
-            links.append(d["link1"])
-            del d["link1"]
-        
-        if "link2" in d:
-            links.append(d["link2"])
-            del d["link2"]
-
-        d["links"] = links
-
-        likes = db.likes.count_documents({"post_id" : str(d["_id"])})
-        d["likes"] = likes
-
-        liked = db.likes.count_documents({"user_id" : str(user["_id"]),"post_id" : str(d["_id"])})
-        d["has_liked"] = 1 if liked > 0 else 0
-        found_posts.append(d)
-
+    found_posts = fetch_posts(user,l)
     return jsonify(payload=found_posts)
 
 @user_routes.get("/post/<uid>")
@@ -132,46 +145,7 @@ def see_posts(uid):
             }
         }
     ])  
-    res = [z for z in res] # Warning - Bad Pattern! (str)
-    for i in range(len(res)):
-        r = res[i]
-        r["_id"] = str(r["_id"])
-
-
-        l = [ObjectId(x) for x in r["topics"]]
-        tags = db.tags.aggregate([
-            {
-                "$match": {
-                    "_id" : {
-                        "$in" : l
-                    }
-                }
-            }
-        ])
-        
-        del r["topics"]
-        # Adding relevant data to response
-        r["tags"] = [t["name"].title() for t in tags]
-        links = []
-        if "link1" in r:
-            links.append(r["link1"])
-            del r["link1"]
-        
-        if "link2" in r:
-            links.append(r["link2"])
-            del r["link2"]
-
-        r["links"] = links
-
-        likes = db.likes.count_documents({"post_id" : str(r["_id"])})
-        r["likes"] = likes
-
-        liked = db.likes.count_documents({"user_id" : str(user["_id"]),"post_id" : str(r["_id"])})
-        r["has_liked"] = 1 if liked > 0 else 0
-        
-        res[i] = r
-
-
+    res = fetch_posts(user,[x["_id"] for x in res])
     return jsonify(payload=res),200
 
 @app.get("/post/<id>")
@@ -184,33 +158,9 @@ def see_specific_post(id):
 
     current_user = get_jwt_identity()
     user = db.users.find_one({"name":current_user})
+    res = fetch_posts(user,[ObjectId(id)])
 
-    post = db.posts.find_one({"_id":ObjectId(id)})
-    t_ids = [ObjectId(x) for x in post["topics"]]
-    tags = [x["name"].title() for x in db.tags.find({"_id" : {"$in":t_ids}})]
-    
-    # Adding relevant data to response
-    res = {x:str(y) for x,y in post.items() if x != "topics"}
-    res["tags"]=tags
-
-    likes = db.likes.count_documents({"post_id":id})
-    res["likes"]=likes
-
-    has_liked = 1 if db.likes.count_documents({"post_id":id,"user_id":str(user["_id"])}) > 0 else 0
-    res["has_liked"]=has_liked
-
-    links = []
-    if "link1" in res:
-        links.append(res["link1"])
-        del res["link1"]
-    
-    if "link2" in res:
-        links.append(res["link2"])
-        del res["link2"]
-
-    res["links"] = links
-
-    return jsonify(payload=res),200
+    return jsonify(payload=res[0]),200
 
 @user_routes.post("/post")
 @jwt_required()
