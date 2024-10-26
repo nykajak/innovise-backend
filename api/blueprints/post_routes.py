@@ -203,7 +203,6 @@ def add_post():
     if link2:
         obj["link2"] = link2
 
-    p_id = db.posts.insert_one(obj).inserted_id        
     tags = []
     for i in range(1,num+1):
         tag = request.form.get(f"tag[{i}]")
@@ -211,6 +210,7 @@ def add_post():
 
     t_docs = [str(x["_id"]) for x in db.tags.find({"name": { "$in" : tags}})]
     obj["topics"] = t_docs
+    p_id = db.posts.insert_one(obj).inserted_id        
 
     return jsonify(payload=p_id),200
 
@@ -253,12 +253,12 @@ def manage_like():
 
     return jsonify(payload=True),200
 
-@user_routes.post("/filter")
+@user_routes.post("/post/filter")
 @jwt_required()
 def filter_posts():
     """
         Returns filtered posts
-        POST /users/filter
+        POST /users/post/filter
         Body:
             type: Type of post
             num: Number of tags
