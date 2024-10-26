@@ -70,6 +70,29 @@ def see_followers():
     else:
         return jsonify({"msg":"No such user found"}),404
     
+@user_routes.get("/following")
+@jwt_required()
+def see_following():
+    """
+        GET /users/<id>/followers
+        Returns list of followers
+    """
+    current_user = get_jwt_identity()
+    user = db.users.find_one({"name":current_user})
+    if user:
+        followers = db.followers.find({"follower_id":str(user["_id"])})
+        follower_data = []
+
+        for i in followers: # Warning - Bad Pattern! (loop)
+            res = db.users.find_one({"_id":ObjectId(i["followed_id"])})
+            if res:
+                follower_data.append({"name":res["name"],"fullname":res["fullname"],"picture":""})
+
+        return jsonify({"payload":follower_data}),200
+    
+    else:
+        return jsonify({"msg":"No such user found"}),404
+    
 @user_routes.get("/following/<id>")
 @jwt_required()
 def is_following(id):

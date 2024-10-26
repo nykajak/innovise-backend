@@ -265,6 +265,7 @@ def filter_posts():
             tag[1] : First tag
             tag[2] : Second tag
             owner : name of user to filter. Leave blank otherwise
+            following: 1 if filter by following leave blank otherwise
     """
     current_user = get_jwt_identity()
     user = db.users.find_one({"name":current_user})
@@ -272,9 +273,10 @@ def filter_posts():
     _type = request.form.get("type",None)
     num = int(request.form.get("num",0))
     owner = request.form.get("owner",None)
+    following = int(request.form.get("following",0))
     tags = []
     
-    if owner is None:
+    if owner is None and following == 0:
         own_posts = db.posts.find({"user_id":str(user["_id"])})
         own_posts = [x["_id"] for x in own_posts]
         pipeline = [
@@ -283,7 +285,7 @@ def filter_posts():
             }
         ]
 
-    else:
+    elif owner:
         target_user = db.users.find_one({"_id":ObjectId(owner)})
         if target_user is None:
             return jsonify(msg="No such user found"),400
@@ -296,6 +298,18 @@ def filter_posts():
             }
         ]
     
+    elif following == 1:
+        following = [ObjectId(x["followed_id"]) for x in db.followers.find({"follower_id":str(user["_id"])})]
+        target_users = [str(x["_id"]) for x in db.users.find({"_id":{"$in":following}})]
+
+        owned_posts = db.posts.find({"user_id":{"$in":target_users}})
+        owned_posts = [x["_id"] for x in owned_posts]
+        pipeline = [
+            {
+                "$match" : {"_id": {"$in": owned_posts}}
+            }
+        ]
+
     if _type:
         pipeline.append({
             "$match" : {"type": _type.lower()}
