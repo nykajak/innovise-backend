@@ -264,7 +264,7 @@ def filter_posts():
             num: Number of tags
             tag[1] : First tag
             tag[2] : Second tag
-            owned : name of user to filter. Leave blank otherwise
+            owner : name of user to filter. Leave blank otherwise
     """
     current_user = get_jwt_identity()
     user = db.users.find_one({"name":current_user})
@@ -284,7 +284,7 @@ def filter_posts():
         ]
 
     else:
-        target_user = db.users.find_one({"name":owner})
+        target_user = db.users.find_one({"_id":ObjectId(owner)})
         if target_user is None:
             return jsonify(msg="No such user found"),400
         
