@@ -7,13 +7,12 @@ from api.blueprints.user_routes import user_routes
 import base64
 
 
-def fetch_posts(user,p_ids,include_pics = True):
+def fetch_posts(user,p_ids):
     posts = db.posts.find({"_id":{"$in":p_ids}})
     temp = {str(p["_id"]):p for p in posts}
     posts = [temp[str(i)] for i in p_ids]
 
-    if not include_pics:
-        mapping = {}
+    mapping = {}
 
     found_posts = []
     for p in posts:    
@@ -30,13 +29,11 @@ def fetch_posts(user,p_ids,include_pics = True):
         d["user_fullname"] = specific_user["fullname"]
         d["user_bio"] = specific_user["bio"]
 
-        if include_pics:
-            d["picture"] = base64.b64encode(fs.get(ObjectId(specific_user["picture"])).read()).decode("utf-8")     
-        else:
-            if str(specific_user["_id"]) not in mapping:
-                mapping[str(specific_user["_id"])] = base64.b64encode(fs.get(ObjectId(specific_user["picture"])).read()).decode("utf-8")
+        if str(specific_user["_id"]) not in mapping:
+            mapping[str(specific_user["_id"])] = base64.b64encode(fs.get(ObjectId(specific_user["picture"])).read()).decode("utf-8")
 
         d["tags"] = post_tags
+        del d["topics"]
         links = []
         if "link1" in d:
             links.append(d["link1"])
@@ -55,10 +52,7 @@ def fetch_posts(user,p_ids,include_pics = True):
         d["has_liked"] = 1 if liked > 0 else 0
         found_posts.append(d)
 
-    if include_pics:
-        return found_posts
-    else:
-        return found_posts,mapping
+    return found_posts,mapping
 
 @app.delete("/post/<id>")
 @jwt_required()
@@ -133,7 +127,7 @@ def suggest_posts():
 
     l = [ObjectId(x["_id"]) for x in res]
 
-    found_posts,mapping = fetch_posts(user,l,include_pics=False)
+    found_posts,mapping = fetch_posts(user,l)
     return jsonify(payload=found_posts,mapping=mapping)
 
 @user_routes.get("/post/<uid>")
@@ -157,7 +151,7 @@ def see_posts(uid):
         }
     ])  
 
-    found_posts,mapping = fetch_posts(user,[x["_id"] for x in res],include_pics=False)
+    found_posts,mapping = fetch_posts(user,[x["_id"] for x in res])
     return jsonify(payload=found_posts,mapping=mapping)
 
 @app.get("/post/<id>")
@@ -170,7 +164,7 @@ def see_specific_post(id):
 
     current_user = get_jwt_identity()
     user = db.users.find_one({"name":current_user})
-    res,mapping = fetch_posts(user,[ObjectId(id)],include_pics=False)
+    res,mapping = fetch_posts(user,[ObjectId(id)])
 
     return jsonify(payload=res[0],mapping=mapping),200
 
@@ -258,3 +252,76 @@ def manage_like():
         })
 
     return jsonify(payload=True),200
+
+@user_routes.post("/filter")
+@jwt_required()
+def filter_posts():
+    """
+        Returns filtered posts
+        POST /users/filter
+        Body:
+            type: Type of post
+            num: Number of tags
+            tag[1] : First tag
+            tag[2] : Second tag
+    """
+    current_user = get_jwt_identity()
+    user = db.users.find_one({"name":current_user})
+
+    _type = request.form.get("type",None)
+    num = int(request.form.get("num",0))
+    tags = []
+    
+    own_posts = db.posts.find({"user_id":str(user["_id"])})
+    own_posts = [x["_id"] for x in own_posts]
+    pipeline = [
+        {
+            "$match" : {"_id": {"$nin": own_posts}}
+        }
+    ]
+
+    
+    if _type:
+        pipeline.append({
+            "$match" : {"type": _type.lower()}
+        })
+    
+    if num > 0:
+        tags = []
+        for i in range(num):
+            tags.append(request.form.get(f"tag[{i+1}]").lower())
+        
+        t_ids = [str(x["_id"]) for x in db.tags.find({"name": { "$in" : tags}})]
+
+        pipeline.extend([
+            {
+                "$unwind" : "$topics"
+            },
+            {
+                "$match" : {
+                    "topics" : {
+                        "$in" : t_ids
+                    }
+                }
+            },
+            {
+                "$group" : {
+                    "_id" : "$_id",
+                    "topics" : {"$push" : "$topics"}
+                }
+            },
+            {
+                "$project": { 
+                    "topics" : { "$size" : "$topics" }
+                }
+            },
+            {
+                "$match" : {
+                    "topics" : len(t_ids)
+                }
+            }
+        ])
+    res = db.posts.aggregate(pipeline)
+    p_ids = [x["_id"] for x in res]
+    posts,mapping = fetch_posts(user,p_ids)
+    return jsonify(payload=posts,mapping=mapping),200
