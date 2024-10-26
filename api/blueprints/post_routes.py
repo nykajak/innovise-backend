@@ -7,10 +7,13 @@ from api.blueprints.user_routes import user_routes
 import base64
 
 
-def fetch_posts(user,p_ids):
+def fetch_posts(user,p_ids,include_pics = True):
     posts = db.posts.find({"_id":{"$in":p_ids}})
     temp = {str(p["_id"]):p for p in posts}
     posts = [temp[str(i)] for i in p_ids]
+
+    if not include_pics:
+        mapping = {}
 
     found_posts = []
     for p in posts:    
@@ -26,7 +29,12 @@ def fetch_posts(user,p_ids):
         d["user_name"] = specific_user["name"]
         d["user_fullname"] = specific_user["fullname"]
         d["user_bio"] = specific_user["bio"]
-        d["picture"] = base64.b64encode(fs.get(ObjectId(specific_user["picture"])).read()).decode("utf-8")     
+
+        if include_pics:
+            d["picture"] = base64.b64encode(fs.get(ObjectId(specific_user["picture"])).read()).decode("utf-8")     
+        else:
+            if str(specific_user["_id"]) not in mapping:
+                mapping[str(specific_user["_id"])] = base64.b64encode(fs.get(ObjectId(specific_user["picture"])).read()).decode("utf-8")
 
         d["tags"] = post_tags
         links = []
@@ -47,7 +55,10 @@ def fetch_posts(user,p_ids):
         d["has_liked"] = 1 if liked > 0 else 0
         found_posts.append(d)
 
-    return found_posts
+    if include_pics:
+        return found_posts
+    else:
+        return found_posts,mapping
 
 @app.delete("/post/<id>")
 @jwt_required()
@@ -122,8 +133,8 @@ def suggest_posts():
 
     l = [ObjectId(x["_id"]) for x in res]
 
-    found_posts = fetch_posts(user,l)
-    return jsonify(payload=found_posts)
+    found_posts,mapping = fetch_posts(user,l,include_pics=False)
+    return jsonify(payload=found_posts,mapping=mapping)
 
 @user_routes.get("/post/<uid>")
 @jwt_required()
@@ -145,8 +156,9 @@ def see_posts(uid):
             }
         }
     ])  
-    res = fetch_posts(user,[x["_id"] for x in res])
-    return jsonify(payload=res),200
+
+    found_posts,mapping = fetch_posts(user,[x["_id"] for x in res],include_pics=False)
+    return jsonify(payload=found_posts,mapping=mapping)
 
 @app.get("/post/<id>")
 @jwt_required()
@@ -158,9 +170,9 @@ def see_specific_post(id):
 
     current_user = get_jwt_identity()
     user = db.users.find_one({"name":current_user})
-    res = fetch_posts(user,[ObjectId(id)])
+    res,mapping = fetch_posts(user,[ObjectId(id)],include_pics=False)
 
-    return jsonify(payload=res[0]),200
+    return jsonify(payload=res[0],mapping=mapping),200
 
 @user_routes.post("/post")
 @jwt_required()
