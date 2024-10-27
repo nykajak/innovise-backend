@@ -26,7 +26,13 @@ def get_id(name):
 
     obj = db.users.find_one({"name":name})
     if obj:
-        obj = {x:str(y) for x,y in obj.items() if x in ["name","fullname", "bio", "_id","picture"]}
+        obj = {
+            "_id":str(obj["_id"]),
+            "name":obj["name"],
+            "fullname":obj["fullname"],
+            "bio":obj["bio"],
+            "picture": base64.b64encode(fs.get(ObjectId(obj["picture"])).read()).decode("utf-8")
+        }
         return jsonify({"payload":obj}),200
     else:
         return jsonify({"msg":"User not found!"}), 404
