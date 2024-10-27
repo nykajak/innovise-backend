@@ -166,7 +166,7 @@ def see_specific_post(id):
     user = db.users.find_one({"name":current_user})
     res,mapping = fetch_posts(user,[ObjectId(id)])
 
-    return jsonify(payload=res[0],mapping=mapping),200
+    return jsonify(payload=res,mapping=mapping),200
 
 @user_routes.post("/post")
 @jwt_required()
