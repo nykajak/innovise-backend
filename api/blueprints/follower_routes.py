@@ -1,9 +1,10 @@
-from api import app,db,jwt
+from api import app,db,fs
 from flask import jsonify,redirect,request,url_for
 from flask_pymongo import ObjectId
 from pymongo.errors import DuplicateKeyError
 from flask_jwt_extended import create_access_token,get_jwt_identity,jwt_required
 from api.blueprints.user_routes import user_routes 
+import base64
 
 @user_routes.post("/following")
 @jwt_required()
@@ -31,7 +32,7 @@ def manage_following():
         if operation == 0: # If insertion
             try:
                 followed_obj_id = db.followers.insert_one({"follower_id":follower_id, "followed_id": followed_id}).inserted_id
-                res = {x:str(y) for x,y in db.followers.find_one({"_id":followed_obj_id}).items()} # Warning - Bad Pattern! (str)
+                res = {x:str(y) for x,y in db.followers.find_one({"_id":followed_obj_id}).items()}
                 return jsonify({"payload":res}),200
 
             except DuplicateKeyError as e:
@@ -57,42 +58,18 @@ def see_followers():
     current_user = get_jwt_identity()
     user = db.users.find_one({"name":current_user})
     if user:
-        followers = db.followers.find({"followed_id":str(user["_id"])})
-        follower_data = []
-
-        for i in followers: # Warning - Bad Pattern! (loop)
-            res = db.users.find_one({"_id":ObjectId(i["follower_id"])})
-            if res:
-                follower_data.append({"name":res["name"],"fullname":res["fullname"],"picture":""})
-
-        return jsonify({"payload":follower_data}),200
-    
-    else:
-        return jsonify({"msg":"No such user found"}),404
-    
-@user_routes.get("/following")
-@jwt_required()
-def see_following():
-    """
-        GET /users/<id>/followers
-        Returns list of followers
-    """
-    current_user = get_jwt_identity()
-    user = db.users.find_one({"name":current_user})
-    if user:
-        followers = db.followers.find({"follower_id":str(user["_id"])})
-        follower_data = []
-
-        for i in followers: # Warning - Bad Pattern! (loop)
-            res = db.users.find_one({"_id":ObjectId(i["followed_id"])})
-            if res:
-                follower_data.append({"name":res["name"],"fullname":res["fullname"],"picture":""})
+        f_ids = [ObjectId(i["follower_id"]) for i in db.followers.find({"followed_id":str(user["_id"])})]
+        follower_data = [{
+            "name":x["name"],
+            "fullname":x["fullname"],
+            "picture":base64.b64encode(fs.get(ObjectId(x["picture"])).read()).decode("utf-8")
+        } for x in db.users.find({"_id":{"$in":f_ids}})]
 
         return jsonify({"payload":follower_data}),200
     
     else:
         return jsonify({"msg":"No such user found"}),404
-    
+        
 @user_routes.get("/following/<id>")
 @jwt_required()
 def is_following(id):
@@ -175,8 +152,7 @@ def follower_suggestions():
     l = [ObjectId(x["_id"]) for x in u_ids]
     users = db.users.find({"_id":{"$in":l}}) # Find users corresponding to ids. Note: this is not sorted
 
-    # Warning - Bad Pattern! (picture)
-    temp = {str(x["_id"]):{"name":x["name"],"fullname":x["fullname"],"picture":str(x["picture"])} for x in users}
+    temp = {str(x["_id"]):{"name":x["name"],"fullname":x["fullname"],"picture":base64.b64encode(fs.get(ObjectId(x["picture"])).read()).decode("utf-8")} for x in users}
     users = [temp[str(i)] for i in l] # Sorted list of users
 
     if len(users) == 0: # if no interests provided
@@ -193,6 +169,5 @@ def follower_suggestions():
                 "$limit":4
             }
         ])
-        # Warning - Bad Pattern! (picture)
-        users = [{"name":x["name"],"fullname":x["fullname"],"picture":x["picture"]} for x in u]
+        users = [{"name":x["name"],"fullname":x["fullname"],"picture":base64.b64encode(fs.get(ObjectId(x["picture"])).read()).decode("utf-8")} for x in u]
     return jsonify(payload=users),200
