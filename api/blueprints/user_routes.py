@@ -1,6 +1,6 @@
 # File containing user related routes
 
-from api import app,db,jwt,fs
+from api import app,db,jwt,fs,bcrypt
 from flask import Blueprint,jsonify,redirect,request,url_for
 from flask_pymongo import ObjectId
 from pymongo.errors import DuplicateKeyError
@@ -64,7 +64,7 @@ def add_user():
             id = db.users.insert_one({
                     "name":name,
                     "email":email,
-                    "password":password,
+                    "password":bcrypt.generate_password_hash(password),
                     "fullname":fullname,
                     "bio":bio,
                     "picture":DEFAULT_PIC,
@@ -117,7 +117,9 @@ def login():
     password = request.form.get("password", None)
 
     user = db.users.find_one({"name":username})
-    if user and user["password"] == password:
+    print(user["password"])
+    print(bcrypt.generate_password_hash(password))
+    if user and bcrypt.check_password_hash(user["password"],password):
         access_token = create_access_token(identity=username,expires_delta=timedelta(hours=1))
         return jsonify(access_token=access_token),200
     
