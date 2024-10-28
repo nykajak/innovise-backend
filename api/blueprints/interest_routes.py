@@ -14,6 +14,7 @@ def all_interests():
     payload = []
     for x in db.tags.find():
         payload.append(x["name"].title())
+    payload.sort()
     return jsonify(payload=payload)
 
 
