@@ -7,7 +7,7 @@ from flask_bcrypt import Bcrypt
 from gridfs import GridFS
 
 app = Flask(__name__)
-app.config["DEBUG"] = True
+app.config["DEBUG"] = False
 app.config["MONGO_URI"] = os.getenv("CONN_STR")
 app.config["SECRET_KEY"] = "verysecretkey" # To be changed
 
