@@ -117,8 +117,6 @@ def login():
     password = request.form.get("password", None)
 
     user = db.users.find_one({"name":username})
-    print(user["password"])
-    print(bcrypt.generate_password_hash(password))
     if user and bcrypt.check_password_hash(user["password"],password):
         access_token = create_access_token(identity=username,expires_delta=timedelta(hours=1))
         return jsonify(access_token=access_token),200
