@@ -93,19 +93,6 @@ def get_user(id):
     else:
         return jsonify({"msg":"User not found!"}), 404
 
-@user_routes.delete("/<id>")
-def delete_user(id):
-    """
-        DELETE /users/<id> 
-        Deletes a user with given id. Not to be in final product.
-    """
-
-    res = db.users.find_one_and_delete({"_id":ObjectId(id)})
-    if res:
-        res = {x:str(y) for x,y in res.items() if x in ["name","fullname", "bio", "_id"]}
-        return {"payload":res},200
-    
-    return jsonify({"msg":"User not found!"}), 404
 
 @user_routes.post("/login")
 def login():
