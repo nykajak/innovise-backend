@@ -7,8 +7,16 @@ from api.blueprints.user_routes import user_routes
 import base64
 
 
-def fetch_posts(user,p_ids):
-    posts = db.posts.find({"_id":{"$in":p_ids}})
+def fetch_posts(user,p_ids,page=1,count=10):
+    page = int(page)
+    p_ids = p_ids[(page - 1) * count:(page - 1) * count + 10]
+    posts = db.posts.aggregate([
+        {
+            "$match" : {
+                "_id":{"$in":p_ids}
+            }
+        }
+    ])
     temp = {str(p["_id"]):p for p in posts}
     posts = [temp[str(i)] for i in p_ids]
 
@@ -78,10 +86,13 @@ def suggest_posts():
     """
         GET /users/post/suggestions
         Returns a list of post suggestions for logged in user. Can't be their own posts.
+        args:
+            page = page no
     """
     current_user = get_jwt_identity()
     user = db.users.find_one({"name":current_user})
     
+    page = request.args.get("page",1)
     own_posts = db.posts.find({"user_id":str(user["_id"])})
     own_posts = [x["_id"] for x in own_posts]
 
@@ -127,8 +138,8 @@ def suggest_posts():
 
     l = [ObjectId(x["_id"]) for x in res]
 
-    found_posts,mapping = fetch_posts(user,l)
-    return jsonify(payload=found_posts,mapping=mapping)
+    found_posts,mapping = fetch_posts(user,l,page=page)
+    return jsonify(payload=found_posts,mapping=mapping, pages = len(l))
 
 @user_routes.get("/post/<uid>")
 @jwt_required()
@@ -136,11 +147,13 @@ def see_posts(uid):
     """
         GET /user/post/<uid>
         Returns all posts by a user given user id
+        args
+            page=page no
     """
 
     current_user = get_jwt_identity()
     user = db.users.find_one({"name":current_user})
-
+    page = request.args.get("page",1)
     res = db.posts.aggregate([
         {
             "$match": {
@@ -150,9 +163,9 @@ def see_posts(uid):
             }
         }
     ])  
-
-    found_posts,mapping = fetch_posts(user,[x["_id"] for x in res])
-    return jsonify(payload=found_posts,mapping=mapping)
+    l = [x["_id"] for x in res]
+    found_posts,mapping = fetch_posts(user,l,page=page)
+    return jsonify(payload=found_posts,mapping=mapping, pages = len(l))
 
 @app.get("/post/<id>")
 @jwt_required()
@@ -166,7 +179,7 @@ def see_specific_post(id):
     user = db.users.find_one({"name":current_user})
     res,mapping = fetch_posts(user,[ObjectId(id)])
 
-    return jsonify(payload=res,mapping=mapping),200
+    return jsonify(payload=res,mapping=mapping,pages=1),200
 
 @user_routes.post("/post")
 @jwt_required()
@@ -266,6 +279,7 @@ def filter_posts():
             tag[2] : Second tag
             owner : name of user to filter. Leave blank otherwise
             following: 1 if filter by following leave blank otherwise
+            page: page no
     """
     current_user = get_jwt_identity()
     user = db.users.find_one({"name":current_user})
@@ -352,5 +366,5 @@ def filter_posts():
         ])
     res = db.posts.aggregate(pipeline)
     p_ids = [x["_id"] for x in res]
-    posts,mapping = fetch_posts(user,p_ids)
-    return jsonify(payload=posts,mapping=mapping),200
+    posts,mapping = fetch_posts(user,p_ids,page = request.form.get("page",1))
+    return jsonify(payload=posts,mapping=mapping,pages=len(p_ids)),200
