@@ -9,7 +9,7 @@ from gridfs import GridFS
 app = Flask(__name__)
 app.config["DEBUG"] = False
 app.config["MONGO_URI"] = os.getenv("CONN_STR")
-app.config["SECRET_KEY"] = "verysecretkey" # To be changed
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY") # To be changed
 
 with app.app_context():
     db = PyMongo(current_app).cx["innovise"]
