@@ -17,6 +17,6 @@ with app.app_context():
     fs = GridFS(db)
     bcrypt = Bcrypt(app)
 
-CORS(app,origins=["http://localhost:3000"],supports_credentials=True)
+CORS(app,supports_credentials=True)
 
 from api import routes
