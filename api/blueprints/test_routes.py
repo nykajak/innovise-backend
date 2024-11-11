@@ -11,6 +11,6 @@ def test():
         Returns name:Dummy if user with name dummy exists
     """
     obj = db.users.find_one({"name":"Dummy"})
-    return jsonify({"name":obj["name"]})
+    return jsonify({"name":app.config["SECRET_KEY"] })
 
 app.register_blueprint(test_routes,url_prefix="/test")
