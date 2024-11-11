@@ -1,2 +1,2 @@
-from api import app
+from api import app,routes
 app.run()
