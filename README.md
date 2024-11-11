@@ -10,8 +10,6 @@ The backend uses Flask and related libraries to provide a backend server, and a 
 - Set needed environment variables - `export CONN_STR = <mongodb-instance-uri>` and `export SECRET_KEY = <secret-key>`
 - Launch the virtual environment and execute `python api/run.py`
 
-# API Reference
-
 # Contributors
 - [nykajak](https://github.com/nykajak)
 - [trex2004](https://github.com/trex2004)
