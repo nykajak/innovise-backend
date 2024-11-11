@@ -13,3 +13,5 @@ The backend uses Flask and related libraries to provide a backend server, and a 
 # Contributors
 - [nykajak](https://github.com/nykajak)
 - [trex2004](https://github.com/trex2004)
+
+# [Frontend Repo](https://github.com/trex2004/Innovise)
